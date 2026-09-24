@@ -64,6 +64,24 @@ const loadEqEditorApi = (scriptUrl) => {
     return scriptPromise;
 };
 
+// EqEditor.init() switches the converter every TextArea/MathView/Toolbar construction takes on
+// to fxTeX Pro - skip it and they keep the placeholder converter for their whole lifetime, even
+// once eqneditor.api.min.js itself has loaded. Called once per page; an empty licence is the
+// normal, expected state until a real one is configured.
+let initPromise = null;
+
+const ensureInit = (licence) => {
+    if (initPromise) {
+        return initPromise;
+    }
+    initPromise = (typeof window.EqEditor.init === 'function')
+        ? window.EqEditor.init({licence: licence || ''}).catch((err) => {
+            window.console && console.warn(`fxTeX Pro: ${err && err.message || err}`);
+        })
+        : Promise.resolve();
+    return initPromise;
+};
+
 const loadCssOnce = (url) => {
     if (document.querySelector(`link[href="${url}"]`)) {
         return;
@@ -108,14 +126,56 @@ const setShowLatexPreference = (visible) => {
 // !important, and injected once here rather than relying on load order against eqneditor.css
 // (loaded separately, asynchronously, from the site's configured host): which stylesheet's
 // rule wins would otherwise depend on which finishes loading last.
-const injectSizeOverrideOnce = () => {
+// The API's own injected @font-face for "Latin Modern Math" (the face MathView and every
+// rendered equation use) only carries local("Latin Modern Math") - no url() fallback - so it
+// silently falls back to a generic serif unless that exact font happens to be installed. A
+// later @font-face for the same family replaces the API's src list rather than merging with
+// it, so redeclaring it here with a real url() fixes every equation and symbol on the page.
+const injectSizeOverrideOnce = (fontUrl) => {
     if (document.getElementById('cc-eqneditor-size-override')) {
         return;
     }
     const style = document.createElement('style');
     style.id = 'cc-eqneditor-size-override';
-    style.textContent = '.CCMathViewHost, .CCLatexInput { min-height: 220px !important; }';
+    style.textContent = `@font-face { font-family: "Latin Modern Math"; font-display: swap; ` +
+        `src: local("Latin Modern Math"), url("${fontUrl}") format("opentype"); }` +
+        // Undo host resets (e.g. .cke_reset_all *) inside the toolbar icons and the maths view's MathML.
+        '.CCToolbar svg, .CCToolbar svg * { font: revert-layer !important; }' +
+        '.CCToolbar svg * { width: revert-layer !important; height: revert-layer !important; }' +
+        '.CCToolbar svg g[font-family="fxTeX Toolbar"] { color: #000 !important; }' +
+        '.CCMathView math, .CCMathView math * { font: revert-layer !important; ' +
+            'width: revert-layer !important; height: revert-layer !important; padding: revert-layer !important; ' +
+            'margin: revert-layer !important; text-transform: revert-layer !important; text-align: revert-layer !important; ' +
+            'box-sizing: revert-layer !important; white-space: revert-layer !important; }' +
+        apiMathRules() +
+        '.CCMathViewHost, .CCLatexInput { min-height: 220px !important; }';
     document.head.appendChild(style);
+};
+
+// Re-asserts the API's own .CCMathView/.fxtex rules, which host resets and revert-layer override.
+const apiMathRules = () => {
+    let out = '';
+    for (const sheet of document.styleSheets) {
+        let rules;
+        try {
+            rules = sheet.cssRules;
+        } catch (e) {
+            continue;
+        }
+        for (const r of rules) {
+            if (!r.selectorText || !/(^|,)\s*\.(fxtex|CCMathView)\b/.test(r.selectorText)) {
+                continue;
+            }
+            let decls = '';
+            for (const p of r.style) {
+                decls += `${p}:${r.style.getPropertyValue(p)} !important;`;
+            }
+            if (decls) {
+                out += r.selectorText.split(',').map((s) => (/^\.CCMathView\b/.test(s.trim()) ? s.trim() : `.CCMathView ${s.trim()}`)).join(',') + `{${decls}}`;
+            }
+        }
+    }
+    return out;
 };
 
 let instanceCount = 0;
@@ -200,7 +260,7 @@ const setupEditor = (editor) => {
             .addOutput(eqOutput)
             .addHistoryMenu(new window.EqEditor.History(ids.history));
 
-        eqToolbar = window.EqEditor.Toolbar.link(ids.toolbar, 'default', 1.4).addTextArea(eqTextArea);
+        eqToolbar = window.EqEditor.Toolbar.link(ids.toolbar).addTextArea(eqTextArea);
 
         if (typeof window.EqEditor.MathView !== 'undefined') {
             eqMathView = window.EqEditor.MathView.link(ids.mathview).addTextArea(eqTextArea);
@@ -267,8 +327,8 @@ const setupEditor = (editor) => {
             },
         });
 
-        apiReady.then(() => {
-            injectSizeOverrideOnce();
+        apiReady.then(() => ensureInit('')).then(() => {
+            injectSizeOverrideOnce(cssUrl.slice(0, cssUrl.lastIndexOf('/') + 1) + 'prototypes/latinmodern-math.otf');
             mount();
             eqTextArea.clear();
             if (latex) {
