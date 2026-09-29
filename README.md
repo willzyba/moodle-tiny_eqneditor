@@ -8,7 +8,10 @@ plugin registration and configuration APIs. See that plugin's own comments for t
 behind the dialog's behaviour; this file only covers what is Moodle-specific.
 
 **This plugin has not been tested against a running Moodle instance** - there is no Moodle
-codebase in this repository to test it against. Every file follows Moodle's documented
+codebase in this repository to test it against. The dialog itself has been exercised in a
+browser harness (TinyMCE 6 with `editor_tiny/utils`, `editor_tiny/options` and `core/str`
+stubbed out): toolbar and maths view match the reference editor, and SVG, LaTeX and MathML
+inserts and double-click editing all work. Every file follows Moodle's documented
 `editor_tiny` plugin API (https://moodledev.io/docs/apis/plugintypes/editor_tiny) as closely as
 current knowledge of it allows, and the PHP has been checked for syntax errors
 (`php -l` on every file), but it has not been installed and clicked through on a real site.
@@ -29,13 +32,13 @@ support, since the Tiny plugin API has moved between minor releases.
    - add **Equation** to the toolbar configuration.
 5. *Site administration &rarr; Plugins &rarr; Text editors &rarr; TinyMCE editor &rarr; CodeCogs
    Equation Editor* - the settings this plugin's `settings.php` adds - to change the render
-   host, the insert form, or the LaTeX pane's default visibility.
+   host or the dialog's default insert form.
 
 ## Structure
 
 ```
 version.php                    Plugin version/requires - standard for every Moodle plugin.
-settings.php                   Site admin settings (server, renderurl, insertas, showlatex).
+settings.php                   Site admin settings (server, renderurl, insertas).
 classes/plugininfo.php         Registers the button/menu item, passes settings.php's values
                                 through to the AMD module for the current context.
 lang/en/tiny_eqneditor.php     English strings - button/menu text, dialog title, settings.
@@ -56,9 +59,16 @@ per-instance override:
 | Setting | Default | Meaning |
 |---|---|---|
 | Equation Editor host | `editor.codecogs.com` | Where the Equation Editor's own code is loaded from. Change this only if you run your own copy. |
+| Licence key | *(empty)* | Your fxTeX Pro licence key (`fx_pk_...`). Without one the maths view shows a licence error instead of rendering. |
 | Rendering service URL | `https://latex.codecogs.com` | The service that turns an equation into an image, used when *Insert as* is *Image*. |
-| Insert as | Image | How a saved equation is written into the content: *Image* (an `<img>`), *LaTeX text* (`$$...$$`, needs fxTeX, KaTeX or MathJax on the page that displays it - most Moodle content does not have one, so this is a deliberate opt-in, not the default), or *MathML* (final markup, needs the stylesheet below). |
-| Show LaTeX markup by default | on | Whether the LaTeX pane starts visible beneath the maths view. |
+| Insert as | Image | The dialog's starting *Insert as* choice (authors can change it per equation): *Image* (an SVG `<img>`), *LaTeX* (`\( \)` when *Inline* is on, `$$ $$` otherwise, for Moodle's MathJax filter - so it only renders where that filter is enabled), or *MathML* (final markup, needs the stylesheet below). |
+
+## The dialog
+
+The same layout as every other adapter in this repo: the toolbar and maths view on top, then
+one bottom bar with the *Inline* and *LaTeX markup* toggles on the left and *Insert as*,
+*Cancel* and *OK* on the right. The maths view is always shown first; *LaTeX markup* swaps it
+for the LaTeX source for this dialog only.
 
 ### MathML needs a stylesheet on the page that displays it
 

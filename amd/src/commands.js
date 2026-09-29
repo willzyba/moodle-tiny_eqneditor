@@ -16,13 +16,12 @@
 /**
  * The toolbar button, menu item, and dialog itself.
  *
- * This is the same EqEditor loading/mounting logic as tinymce/v6/eqneditor.js in the
- * top-level eqneditor-v5-plugins repo - Moodle 4.1+'s own editor *is* TinyMCE 6, so the
- * dialog code is identical; only how configuration is read (options.js, via Moodle's
- * per-context plugin configuration, rather than editor.getParam()) and how the plugin
- * registers itself (Moodle's Tiny plugin API, rather than tinymce.PluginManager.add() called
- * directly) differ. Keep the two in step by hand until there is a shared package worth
- * factoring them into.
+ * The same maths-view-only dialog as tinymce/v6/eqneditor.js in the top-level
+ * eqneditor-v5-plugins repo - Moodle 4.1+'s own editor *is* TinyMCE 6 - with the LaTeX and
+ * Inline toggles bottom-left and "Insert as", Cancel and OK bottom-right. What differs is how
+ * configuration is read (options.js, via Moodle's per-context plugin configuration), how the
+ * plugin registers itself (Moodle's Tiny plugin API), and a third "Insert as" choice, LaTeX
+ * text, for sites that render maths with Moodle's MathJax filter. Keep the two in step by hand.
  *
  * @module      tiny_eqneditor/commands
  * @copyright   2026 CodeCogs <https://www.codecogs.com>
@@ -32,7 +31,7 @@
 import {getButtonImage} from 'editor_tiny/utils';
 import {getString} from 'core/str';
 import {component, buttonName, menuItemName, icon} from './common';
-import {getServer, getRenderUrl, getInsertAs, getShowLatex} from './options';
+import {getServer, getLicence, getRenderUrl, getInsertAs} from './options';
 
 let scriptPromise = null;
 
@@ -82,6 +81,16 @@ const ensureInit = (licence) => {
     return initPromise;
 };
 
+// Presentation MathML, plus the three non-"m" elements the converter can emit.
+const MATHML_ELEMENTS = [
+    'math', 'semantics', 'annotation', 'annotation-xml',
+    'mrow', 'mi', 'mo', 'mn', 'ms', 'mtext', 'mspace', 'mglyph',
+    'mfrac', 'msqrt', 'mroot', 'mstyle', 'merror', 'mpadded', 'mphantom', 'menclose',
+    'msub', 'msup', 'msubsup', 'munder', 'mover', 'munderover',
+    'mmultiscripts', 'mprescripts', 'none',
+    'mtable', 'mtr', 'mtd', 'mlabeledtr', 'maction',
+];
+
 const loadCssOnce = (url) => {
     if (document.querySelector(`link[href="${url}"]`)) {
         return;
@@ -106,52 +115,6 @@ const escapeHtml = (s) => String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-// Remembers which view (maths or LaTeX markup) the author last chose, across dialog opens and
-// page loads - a cookie rather than localStorage because it is one line to read without a
-// helper, and every editor instance on the page shares the one preference. Every adapter in
-// eqneditor-v5-plugins uses this exact cookie name, so the choice carries across editors too.
-const LATEX_COOKIE = 'cc_eqneditor_show_latex';
-
-const getShowLatexPreference = (fallback) => {
-    const match = document.cookie.match(/(?:^|; )cc_eqneditor_show_latex=([^;]*)/);
-    return match ? match[1] === '1' : fallback;
-};
-
-const setShowLatexPreference = (visible) => {
-    document.cookie = `${LATEX_COOKIE}=${visible ? '1' : '0'}; path=/; max-age=31536000; SameSite=Lax`;
-};
-
-// Roughly 50% taller than the shared eqneditor.css's own default for either view, so the
-// maths view in particular reads as the main event rather than a strip above the toolbar.
-// !important, and injected once here rather than relying on load order against eqneditor.css
-// (loaded separately, asynchronously, from the site's configured host): which stylesheet's
-// rule wins would otherwise depend on which finishes loading last.
-// The API's own injected @font-face for "Latin Modern Math" (the face MathView and every
-// rendered equation use) only carries local("Latin Modern Math") - no url() fallback - so it
-// silently falls back to a generic serif unless that exact font happens to be installed. A
-// later @font-face for the same family replaces the API's src list rather than merging with
-// it, so redeclaring it here with a real url() fixes every equation and symbol on the page.
-const injectSizeOverrideOnce = (fontUrl) => {
-    if (document.getElementById('cc-eqneditor-size-override')) {
-        return;
-    }
-    const style = document.createElement('style');
-    style.id = 'cc-eqneditor-size-override';
-    style.textContent = `@font-face { font-family: "Latin Modern Math"; font-display: swap; ` +
-        `src: local("Latin Modern Math"), url("${fontUrl}") format("opentype"); }` +
-        // Undo host resets (e.g. .cke_reset_all *) inside the toolbar icons and the maths view's MathML.
-        '.CCToolbar svg, .CCToolbar svg * { font: revert-layer !important; }' +
-        '.CCToolbar svg * { width: revert-layer !important; height: revert-layer !important; }' +
-        '.CCToolbar svg g[font-family="fxTeX Toolbar"] { color: #000 !important; }' +
-        '.CCMathView math, .CCMathView math * { font: revert-layer !important; ' +
-            'width: revert-layer !important; height: revert-layer !important; padding: revert-layer !important; ' +
-            'margin: revert-layer !important; text-transform: revert-layer !important; text-align: revert-layer !important; ' +
-            'box-sizing: revert-layer !important; white-space: revert-layer !important; }' +
-        apiMathRules() +
-        '.CCMathViewHost, .CCLatexInput { min-height: 220px !important; }';
-    document.head.appendChild(style);
-};
-
 // Re-asserts the API's own .CCMathView/.fxtex rules, which host resets and revert-layer override.
 const apiMathRules = () => {
     let out = '';
@@ -171,12 +134,88 @@ const apiMathRules = () => {
                 decls += `${p}:${r.style.getPropertyValue(p)} !important;`;
             }
             if (decls) {
-                out += r.selectorText.split(',').map((s) => (/^\.CCMathView\b/.test(s.trim()) ? s.trim() : `.CCMathView ${s.trim()}`)).join(',') + `{${decls}}`;
+                out += r.selectorText.split(',')
+                    .map((s) => (/^\.CCMathView\b/.test(s.trim()) ? s.trim() : `.CCMathView ${s.trim()}`))
+                    .join(',') + `{${decls}}`;
             }
         }
     }
     return out;
 };
+
+// The API's own @font-face for "Latin Modern Math" only carries local(), so it falls back to a
+// generic serif unless the font happens to be installed; redeclaring it here adds a real url().
+// Everything else is layout the shared eqneditor.css can't be relied on for, and undoing
+// TinyMCE's `.tox :not(svg)` reset where it reaches the toolbar icons, MathML and bottom bar.
+const injectStyleOverridesOnce = (fontUrl) => {
+    if (document.getElementById('cc-eqneditor-style-overrides')) {
+        return;
+    }
+    const style = document.createElement('style');
+    style.id = 'cc-eqneditor-style-overrides';
+    style.textContent = `@font-face { font-family: "Latin Modern Math"; font-display: swap; ` +
+        `src: local("Latin Modern Math"), url("${fontUrl}") format("opentype"); }` +
+        // Undo host resets (e.g. .cke_reset_all *) inside the toolbar icons and the maths view's MathML.
+        '.CCToolbar svg:has(g[font-family]), .CCToolbar svg:has(g[font-family]) * { font: revert-layer !important; }' +
+        // Older API builds draw the icons as plain <text>, fonted by the API's own .cc_panel rule instead.
+        '.CCToolbar svg:not(:has(g[font-family])) { font: normal normal 16px "fxTeX Toolbar" !important; }' +
+        '.CCToolbar svg:not(:has(g[font-family])) * { font: inherit !important; }' +
+        '.CCToolbar svg, .CCToolbar svg * { width: revert-layer !important; height: revert-layer !important; max-width: revert-layer !important; }' +
+        '.CCToolbar svg g[font-family="fxTeX Toolbar"] { color: #000 !important; }' +
+        '.CCMathView math, .CCMathView math * { font: revert-layer !important; ' +
+            'width: revert-layer !important; height: revert-layer !important; padding: revert-layer !important; ' +
+            'margin: revert-layer !important; text-transform: revert-layer !important; text-align: revert-layer !important; ' +
+            'box-sizing: revert-layer !important; white-space: revert-layer !important; }' +
+        apiMathRules() +
+        '.CCEqnEditor { display: flex !important; flex-direction: column !important; height: 520px !important; }' +
+        '.CCEqnEditor .CCEditorBar, .CCEqnEditor .CCToolbarHost { flex: 0 0 auto; }' +
+        // Left to stretch across the dialog, the toolbar's "fit" pass unwraps every button group
+        // wider than the reference layout; sized to its own content it wraps the same way.
+        '.CCEqnEditor .CCToolbarHost { align-self: flex-start; width: auto; }' +
+        '.CCEqnEditor .CCMathViewHost { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; ' +
+            'justify-content: center; overflow: auto; }' +
+        '.CCEqnEditor[data-inline="on"] .CCMathViewHost { justify-content: flex-start; }' +
+        '.CCEqnEditor[data-latex="on"] .CCMathViewHost { display: none !important; }' +
+        '.CCEqnEditor .CCLatexInput { flex: 1 1 auto; min-height: 0; overflow: auto; }' +
+        '.CCEqnEditor[data-latex="off"] .CCLatexInput { display: none !important; }' +
+        '.CCEqnEditor .CCEqnOutput-hidden { display: none !important; }' +
+    // The bottom bar: toggles left, Insert-as and the dialog's buttons right, one type size. All !important - host dialog resets otherwise restyle it.
+    '.cc-eqn-bar { display: flex !important; align-items: center !important; gap: 16px !important; flex: 0 0 auto !important; ' +
+        'margin: 8px 0 0 !important; padding: 10px 0 0 !important; border: 0 !important; border-top: 1px solid #e2e8f0 !important; ' +
+        'background: none !important; font: 13px/1.3 system-ui, -apple-system, "Segoe UI", Arial, sans-serif !important; color: #1c2530 !important; }' +
+    '.cc-eqn-bar-right { display: flex !important; align-items: center !important; gap: 8px !important; margin: 0 0 0 auto !important; padding: 0 !important; font: inherit !important; color: inherit !important; }' +
+    '.cc-eqn-bar .cc-switch { display: inline-flex !important; align-items: center !important; gap: 6px !important; margin: 0 !important; ' +
+        'padding: 0 !important; font: inherit !important; color: #54647c !important; cursor: pointer !important; user-select: none !important; white-space: nowrap !important; }' +
+    '.cc-eqn-bar .cc-switch input { position: absolute !important; width: 1px !important; height: 1px !important; margin: -1px !important; ' +
+        'padding: 0 !important; border: 0 !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; opacity: 0 !important; }' +
+    '.cc-eqn-bar .cc-switch-track { position: relative !important; display: inline-block !important; flex: 0 0 auto !important; width: 28px !important; ' +
+        'height: 16px !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 8px !important; ' +
+        'background: #ccc !important; transition: background .2s !important; }' +
+    '.cc-eqn-bar .cc-switch-knob { position: absolute !important; display: block !important; top: 2px !important; left: 2px !important; ' +
+        'width: 12px !important; height: 12px !important; margin: 0 !important; border-radius: 50% !important; background: #fff !important; transition: left .2s !important; }' +
+    '.cc-eqn-bar .cc-switch input:checked + .cc-switch-track { background: #4caf50 !important; }' +
+    '.cc-eqn-bar .cc-switch input:checked + .cc-switch-track .cc-switch-knob { left: 14px !important; }' +
+    '.cc-eqn-bar .cc-switch input:focus-visible + .cc-switch-track { outline: 2px solid #003794 !important; outline-offset: 2px !important; }' +
+    '.cc-eqn-bar .cc-switch input:disabled ~ * { opacity: .5 !important; cursor: default !important; }' +
+    '.cc-eqn-bar .cc-switch-label { font: inherit !important; color: inherit !important; }' +
+    '.cc-eqn-bar .cc-switch input:checked ~ .cc-switch-label { color: #003794 !important; font-weight: 600 !important; }' +
+    '.cc-eqn-bar .cc-eqn-select { width: auto !important; height: 30px !important; margin: 0 !important; padding: 0 8px !important; ' +
+        'border: 1px solid #cbd5e0 !important; border-radius: 4px !important; background: #fff !important; font: inherit !important; color: #1c2530 !important; cursor: pointer !important; }' +
+    '.cc-eqn-bar .cc-eqn-btn { display: inline-flex !important; align-items: center !important; height: 30px !important; margin: 0 !important; ' +
+        'padding: 0 16px !important; border: 1px solid #cbd5e0 !important; border-radius: 4px !important; background: #fff !important; ' +
+        'font: inherit !important; color: #1c2530 !important; cursor: pointer !important; box-shadow: none !important; }' +
+    '.cc-eqn-bar .cc-eqn-btn * { font: inherit !important; color: inherit !important; }' +
+    '.cc-eqn-bar .cc-eqn-btn.cc-eqn-primary { background: #2c7a4b !important; border-color: #2c7a4b !important; color: #fff !important; }' +
+        '.tox-dialog:has(.CCEqnEditor) { width: 850px !important; max-width: 96vw !important; height: auto !important; }';
+    document.head.appendChild(style);
+};
+
+const switchHtml = (id, label, title) => `
+    <label class="cc-switch" title="${title}">
+        <input type="checkbox" id="${id}">
+        <span class="cc-switch-track"><span class="cc-switch-knob"></span></span>
+        <span class="cc-switch-label">${label}</span>
+    </label>`;
 
 let instanceCount = 0;
 
@@ -188,69 +227,53 @@ const setupEditor = (editor) => {
         toolbar: `cc-eqn-mdl-toolbar-${n}`,
         mathview: `cc-eqn-mdl-mathview-${n}`,
         latexInput: `cc-eqn-mdl-latex-${n}`,
-        preview: `cc-eqn-mdl-preview-${n}`,
         output: `cc-eqn-mdl-output-${n}`,
-        toggle: `cc-eqn-mdl-toggle-${n}`,
+        toggleInline: `cc-eqn-mdl-toggle-inline-${n}`,
+        toggleLatex: `cc-eqn-mdl-toggle-latex-${n}`,
+        insertMode: `cc-eqn-mdl-insert-mode-${n}`,
     };
 
     const host = getServer(editor);
+    // A bare host means https; a full origin (e.g. http://localhost:8010 for local development) is used as it is.
+    const origin = /^https?:\/\//.test(host) ? host.replace(/\/+$/, '') : `https://${host}`;
     const renderUrl = getRenderUrl(editor);
-    const insertAs = getInsertAs(editor);
-    // The maths view is the default and, by far, the more common thing to want on screen -
-    // the LaTeX markup view is the opt-in. A returning author's last choice (the cookie) wins
-    // over the site's own configured default, which in turn wins over false.
-    let showLatex = getShowLatexPreference(getShowLatex(editor));
-    const scriptUrl = `https://${host}/eqneditor.api.min.js`;
-    const cssUrl = `https://${host}/eqneditor.css`;
-    const mathmlCssUrl = `https://${host}/fxtex.css`;
+    // The site's "Insert as" setting is the dialog's starting choice; 'url' is its image form.
+    const defaultMode = {url: 'svg', latex: 'latex', mathml: 'mathml'}[getInsertAs(editor)] || 'svg';
+    const scriptUrl = `${origin}/eqneditor.api.min.js`;
+    const cssUrl = `${origin}/eqneditor.css`;
 
     const apiReady = loadEqEditorApi(scriptUrl);
     loadCssOnce(cssUrl);
-    if (insertAs === 'mathml') {
-        loadCssOnce(mathmlCssUrl);
-    }
+    loadCssOnce(`${origin}/fxtex.css`);
 
     let eqOutput = null;
     let eqTextArea = null;
     let eqMathView = null;
     let eqToolbar = null;
 
+    const option = (value, label) => `<option value="${value}"${value === defaultMode ? ' selected' : ''}>${label}</option>`;
+
     const panelHtml = () => `
-        <div id="${ids.root}" class="CCEqnEditor" data-latex="${showLatex ? 'on' : 'off'}">
+        <div id="${ids.root}" class="CCEqnEditor" data-latex="off" data-inline="off">
             <div class="CCEditorBar"><div id="${ids.history}" class="CCHistory"></div></div>
-            <div id="${ids.toolbar}"></div>
-            <div id="${ids.latexInput}" class="CCLatexInput" autocorrect="off" placeholder="Write LaTeX here..."></div>
+            <div id="${ids.toolbar}" class="CCToolbarHost"></div>
             <div id="${ids.mathview}" class="CCMathViewHost"></div>
-            <div id="${ids.toggle}" class="CCViewToggle">
-                <label class="cc-switch" title="Show or hide the LaTeX markup above the equation">
-                    <input type="checkbox" data-latex-toggle${showLatex ? ' checked' : ''}>
-                    <span class="cc-switch-track"><span class="cc-switch-knob"></span></span>
-                    <span class="cc-switch-label">LaTeX markup</span>
-                </label>
+            <div id="${ids.latexInput}" class="CCLatexInput" autocorrect="off" placeholder="Write LaTeX here..."></div>
+            <img id="${ids.output}" class="CCEqnOutput-hidden" alt="">
+            <div class="cc-eqn-bar">
+                ${switchHtml(ids.toggleInline, 'Inline', 'Left-align the equation instead of centring it')}
+                ${switchHtml(ids.toggleLatex, 'LaTeX markup', 'Show or hide the LaTeX markup')}
+                <div class="cc-eqn-bar-right">
+                    <select class="cc-eqn-select" id="${ids.insertMode}" title="How to insert the equation">
+                        ${option('mathml', 'Insert as MathML')}
+                        ${option('svg', 'Insert as image (SVG)')}
+                        ${option('latex', 'Insert as LaTeX (MathJax)')}
+                    </select>
+                    <button type="button" class="cc-eqn-btn cc-cancel">Cancel</button>
+                    <button type="button" class="cc-eqn-btn cc-eqn-primary cc-ok">OK</button>
+                </div>
             </div>
-            <div id="${ids.preview}" class="CCEqnOutput"><img id="${ids.output}" alt=""></div>
         </div>`;
-
-    const applyLatexVisible = (visible) => {
-        showLatex = visible;
-        setShowLatexPreference(visible);
-
-        const root = document.getElementById(ids.root);
-        if (root) {
-            root.setAttribute('data-latex', visible ? 'on' : 'off');
-        }
-
-        const box = document.querySelector(`#${ids.toggle} input[data-latex-toggle]`);
-        if (box) {
-            box.checked = visible;
-        }
-
-        // Hiding the markup has to move the toolbar's target back to the maths view,
-        // otherwise a button pressed straight afterwards inserts into a hidden pane.
-        if (eqToolbar && !visible) {
-            eqToolbar.setActiveTextArea(eqMathView || eqTextArea);
-        }
-    };
 
     const mount = () => {
         eqOutput = new window.EqEditor.Output(ids.output);
@@ -262,44 +285,58 @@ const setupEditor = (editor) => {
 
         eqToolbar = window.EqEditor.Toolbar.link(ids.toolbar).addTextArea(eqTextArea);
 
+        const root = document.getElementById(ids.root);
+        const latexToggle = document.getElementById(ids.toggleLatex);
+
         if (typeof window.EqEditor.MathView !== 'undefined') {
             eqMathView = window.EqEditor.MathView.link(ids.mathview).addTextArea(eqTextArea);
             eqToolbar.addMathView(eqMathView);
         } else {
-            // Without a maths view the markup is the only thing to edit in, so it cannot be
-            // hidden however the site configured it.
-            showLatex = true;
+            // Without a maths view the markup is the only thing to edit in - force it visible
+            // and lock the toggle so it cannot be switched to an empty pane.
+            root.setAttribute('data-latex', 'on');
+            latexToggle.checked = true;
+            latexToggle.disabled = true;
         }
 
-        applyLatexVisible(showLatex);
+        latexToggle.addEventListener('change', (e) => {
+            const visible = e.target.checked;
+            root.setAttribute('data-latex', visible ? 'on' : 'off');
+            // Hiding a pane moves the toolbar's target to the other one, so a button pressed
+            // straight afterwards doesn't insert into something the author can't see.
+            eqToolbar.setActiveTextArea(visible ? eqTextArea : (eqMathView || eqTextArea));
+        });
 
-        const toggle = document.getElementById(ids.toggle);
-        if (toggle) {
-            toggle.addEventListener('change', (e) => {
-                if (e.target.matches('input[data-latex-toggle]')) {
-                    applyLatexVisible(e.target.checked);
-                }
-            });
-        }
+        document.getElementById(ids.toggleInline).addEventListener('change', (e) => {
+            const inline = e.target.checked;
+            root.setAttribute('data-inline', inline ? 'on' : 'off');
+            if (eqMathView) {
+                eqMathView.setInline(inline);
+            }
+            eqOutput.setInline(inline);
+        });
     };
 
     const buildInsert = (latex) => {
-        if (insertAs === 'latex') {
-            const fence = '$$';
-            return escapeHtml(fence + latex + fence);
+        const mode = document.getElementById(ids.insertMode).value;
+        if (mode === 'latex') {
+            // Moodle's MathJax filter reads \( \) as inline maths and $$ $$ as display maths.
+            const inline = document.getElementById(ids.toggleInline).checked;
+            return escapeHtml(inline ? `\\(${latex}\\)` : `$$${latex}$$`);
         }
-        if (insertAs === 'mathml') {
-            const markup = eqOutput.exportAs('mathmlspeech');
-            if (markup) {
-                return markup;
-            }
+        if (mode === 'svg') {
+            // referrerpolicy explicitly: latex.codecogs.com identifies the calling site by
+            // referer, and a stricter page policy would otherwise send none.
+            return `<img src="${escapeHtml(eqOutput.exportAs('url'))}" alt="${escapeHtml(latex)}" referrerpolicy="origin">`;
         }
-        return `<img src="${escapeHtml(eqOutput.exportAs('url'))}" alt="${escapeHtml(latex)}">`;
+        return eqOutput.exportAs('mathml');
     };
 
     const showDialog = async(latex = '') => {
         const dialogTitle = await getString('dialogtitle', component);
 
+        // No native footer: Cancel and OK live in the editor's own bottom bar, beside the
+        // toggles and "Insert as".
         const dialog = editor.windowManager.open({
             title: dialogTitle,
             size: 'large',
@@ -307,34 +344,40 @@ const setupEditor = (editor) => {
                 type: 'panel',
                 items: [{type: 'htmlpanel', html: panelHtml()}],
             },
-            buttons: [
-                {type: 'cancel', name: 'closeButton', text: 'Cancel'},
-                {type: 'submit', name: 'submitButton', text: 'Ok', buttonType: 'primary'},
-            ],
-            onSubmit: (api) => {
-                const current = eqTextArea ? eqTextArea.getTextArea().textContent.trim() : '';
-                if (current) {
-                    editor.execCommand('mceInsertContent', false, buildInsert(current));
-                    eqTextArea.pushToHistory();
-                }
-                api.close();
-            },
-            onCancel: (api) => api.close(),
+            buttons: [],
             onClose: () => {
+                // The suggestion list is appended to the document body rather than the dialog,
+                // so it outlives the dialog unless it is dismissed explicitly.
                 if (eqTextArea) {
                     eqTextArea.close();
                 }
             },
         });
 
-        apiReady.then(() => ensureInit('')).then(() => {
-            injectSizeOverrideOnce(cssUrl.slice(0, cssUrl.lastIndexOf('/') + 1) + 'prototypes/latinmodern-math.otf');
+        const insertAndClose = () => {
+            const current = eqTextArea ? eqTextArea.getTextArea().textContent.trim() : '';
+            if (current) {
+                editor.execCommand('mceInsertContent', false, buildInsert(current));
+                eqTextArea.pushToHistory();
+            }
+            dialog.close();
+        };
+
+        // The editor is rebuilt on every open: TinyMCE destroys a dialog's DOM when it closes,
+        // so anything held over from the previous open would point at detached nodes.
+        apiReady.then(() => ensureInit(getLicence(editor))).then(() => {
+            injectStyleOverridesOnce(cssUrl.slice(0, cssUrl.lastIndexOf('/') + 1) + 'prototypes/latinmodern-math.otf');
             mount();
             eqTextArea.clear();
             if (latex) {
                 eqTextArea.insert(latex, latex.length);
             }
             eqTextArea.notifyOutputs();
+
+            const root = document.getElementById(ids.root);
+            root.querySelector('.cc-cancel').addEventListener('click', () => dialog.close());
+            root.querySelector('.cc-ok').addEventListener('click', insertAndClose);
+            return;
         }).catch((err) => {
             // eslint-disable-next-line no-console
             console.error(err);
@@ -343,9 +386,26 @@ const setupEditor = (editor) => {
         });
     };
 
-    // Double-click an equation to edit it again - same recognition rules as the other
-    // eqneditor-v5-plugins adapters: an equation carries the LaTeX it was written from, in
-    // an image's rendering URL or a <math> element's title.
+    // TinyMCE's schema has no MathML in it, so an "Insert as MathML" equation would be stripped
+    // on insert. PreInit is the hook: the schema exists and hasn't filtered anything yet.
+    editor.on('PreInit', () => {
+        if (!editor.schema || typeof editor.schema.addValidElements !== 'function') {
+            return;
+        }
+        editor.schema.addValidElements(MATHML_ELEMENTS.map((name) => `${name}[*]`).join(','));
+        editor.schema.addValidElements('span[class|role|aria-label|aria-hidden]');
+
+        // addValidElements('img[referrerpolicy]') would *replace* img's existing rule and drop
+        // src/alt/width/height, so the one attribute is added to the existing rule directly.
+        const imgRule = editor.schema.getElementRule('img');
+        if (imgRule && imgRule.attributes && !imgRule.attributes.referrerpolicy) {
+            imgRule.attributes.referrerpolicy = {};
+            imgRule.attributesOrder.push('referrerpolicy');
+        }
+    });
+
+    // Double-click an equation to edit it again: an equation carries the LaTeX it was written
+    // from, in an image's rendering URL or a <math> element's title.
     editor.on('dblclick', (e) => {
         const target = e.target;
         if (!target) {

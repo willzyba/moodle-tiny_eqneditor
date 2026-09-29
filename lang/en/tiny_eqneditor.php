@@ -33,12 +33,12 @@ $string['dialogtitle'] = 'Equation Editor';
 
 $string['server'] = 'Equation Editor host';
 $string['server_desc'] = 'Where the Equation Editor\'s own code is loaded from. Change this only if you are running your own copy - see the fxEditor deployment guide.';
+$string['licence'] = 'Licence key';
+$string['licence_desc'] = 'Your fxTeX Pro licence key (fx_pk_...), from your account at editor.codecogs.com. It is public - it is sent to every browser that opens the editor - and only works on the domains it was issued for.';
 $string['renderurl'] = 'Rendering service URL';
 $string['renderurl_desc'] = 'The service that turns an equation into an image, used when "Insert as" is set to Image.';
 $string['insertas'] = 'Insert as';
-$string['insertas_desc'] = 'How a saved equation is written into the page content. See the plugin README for the trade-offs between the three forms.';
+$string['insertas_desc'] = 'The starting choice in the dialog\'s "Insert as" menu, which authors can change for each equation. See the plugin README for the trade-offs between the three forms.';
 $string['insertas_url'] = 'Image (smallest markup, works everywhere, requires the rendering service to be reachable when the content is viewed)';
 $string['insertas_latex'] = 'LaTeX text (tiny and editable by hand, but needs fxTeX, KaTeX or MathJax on the page that displays it)';
 $string['insertas_mathml'] = 'MathML (final markup, nothing to fetch, needs one stylesheet on the page that displays it)';
-$string['showlatex'] = 'Show LaTeX markup view by default';
-$string['showlatex_desc'] = 'Whether the dialog opens on the LaTeX markup view instead of the maths view. Authors can always toggle between them from inside the dialog, and their last choice (remembered in a cookie) overrides this setting on their next visit.';

@@ -36,6 +36,14 @@ if ($ADMIN->fulltree) {
     ));
 
     $settings->add(new admin_setting_configtext(
+        'tiny_eqneditor/licence',
+        get_string('licence', 'tiny_eqneditor'),
+        get_string('licence_desc', 'tiny_eqneditor'),
+        '',
+        PARAM_ALPHANUMEXT
+    ));
+
+    $settings->add(new admin_setting_configtext(
         'tiny_eqneditor/renderurl',
         get_string('renderurl', 'tiny_eqneditor'),
         get_string('renderurl_desc', 'tiny_eqneditor'),
@@ -53,12 +61,5 @@ if ($ADMIN->fulltree) {
             'latex' => get_string('insertas_latex', 'tiny_eqneditor'),
             'mathml' => get_string('insertas_mathml', 'tiny_eqneditor'),
         ]
-    ));
-
-    $settings->add(new admin_setting_configcheckbox(
-        'tiny_eqneditor/showlatex',
-        get_string('showlatex', 'tiny_eqneditor'),
-        get_string('showlatex_desc', 'tiny_eqneditor'),
-        0
     ));
 }

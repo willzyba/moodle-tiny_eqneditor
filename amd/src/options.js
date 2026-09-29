@@ -29,9 +29,9 @@ import {getPluginOptions} from 'editor_tiny/options';
 import {component} from './common';
 
 export const getServer = (editor) => getPluginOptions(editor, component).server || 'editor.codecogs.com';
+export const getLicence = (editor) => getPluginOptions(editor, component).licence || '';
 export const getRenderUrl = (editor) => getPluginOptions(editor, component).renderurl || 'https://latex.codecogs.com';
 export const getInsertAs = (editor) => {
     const value = getPluginOptions(editor, component).insertas || 'url';
     return ['url', 'latex', 'mathml'].includes(value) ? value : 'url';
 };
-export const getShowLatex = (editor) => getPluginOptions(editor, component).showlatex === true;
