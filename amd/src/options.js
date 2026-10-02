@@ -28,9 +28,16 @@
 import {getPluginOptions} from 'editor_tiny/options';
 import {component} from './common';
 
-export const getServer = (editor) => getPluginOptions(editor, component).server || 'editor.codecogs.com';
+export const getServer = (editor) => getPluginOptions(editor, component).server || 'fxeditor.codecogs.com';
 export const getLicence = (editor) => getPluginOptions(editor, component).licence || '';
 export const getRenderUrl = (editor) => getPluginOptions(editor, component).renderurl || 'https://latex.codecogs.com';
+export const getDesign = (editor) => {
+    try {
+        return JSON.parse(getPluginOptions(editor, component).design || '{}') || {};
+    } catch (e) {
+        return {};
+    }
+};
 export const getInsertAs = (editor) => {
     const value = getPluginOptions(editor, component).insertas || 'url';
     return ['url', 'latex', 'mathml'].includes(value) ? value : 'url';

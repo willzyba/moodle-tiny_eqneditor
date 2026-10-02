@@ -41,4 +41,6 @@ $string['insertas'] = 'Insert as';
 $string['insertas_desc'] = 'The starting choice in the dialog\'s "Insert as" menu, which authors can change for each equation. See the plugin README for the trade-offs between the three forms.';
 $string['insertas_url'] = 'Image (smallest markup, works everywhere, requires the rendering service to be reachable when the content is viewed)';
 $string['insertas_latex'] = 'LaTeX text (tiny and editable by hand, but needs fxTeX, KaTeX or MathJax on the page that displays it)';
+$string['design'] = 'Design';
+$string['design_desc'] = 'How the equation editor looks - its toolbar, colour and sizes - as JSON. Build one at https://fxplugins.codecogs.com/docs/moodle.html and paste it here. Leave empty for the standard design.';
 $string['insertas_mathml'] = 'MathML (final markup, nothing to fetch, needs one stylesheet on the page that displays it)';

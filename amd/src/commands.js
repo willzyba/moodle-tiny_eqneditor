@@ -31,7 +31,7 @@
 import {getButtonImage} from 'editor_tiny/utils';
 import {getString} from 'core/str';
 import {component, buttonName, menuItemName, icon} from './common';
-import {getServer, getLicence, getRenderUrl, getInsertAs} from './options';
+import {getServer, getLicence, getRenderUrl, getInsertAs, getDesign} from './options';
 
 let scriptPromise = null;
 
@@ -82,6 +82,42 @@ const ensureInit = (licence) => {
 };
 
 // Presentation MathML, plus the three non-"m" elements the converter can emit.
+// The `design` option (see the README): how the editor looks, set by the site rather than the
+// author. The toolbar's rows and scale go to Toolbar.link() itself; everything else is applied
+// here, once the editor is mounted - CSS scoped to this editor's root, then the starting state of
+// the LaTeX toggle and the "Insert as" menu.
+let designCount = 0;
+const applyDesign = (root, design, latexToggle, insertSelect) => {
+    if (!root || !design) return;
+    if (!root.id) root.id = 'cc-eqn-design-' + (++designCount);
+    const sel = '#' + root.id;
+    let css = '';
+    const colour = String(design.colour || '');
+    if (/^(#[0-9a-f]{3,8}|[a-z]+)$/i.test(colour)) {
+        css += sel + ' { --cc-accent: ' + colour + ';' +
+            ' --cc-accent-soft: color-mix(in srgb, ' + colour + ' 11%, #fff);' +
+            ' --cc-accent-soft-ring: color-mix(in srgb, ' + colour + ' 28%, #fff);' +
+            ' --cc-accent-mid: color-mix(in srgb, ' + colour + ' 22%, #fff);' +
+            ' --cc-accent-mid-ring: color-mix(in srgb, ' + colour + ' 43%, #fff); }';
+    }
+    if (Number(design.mathSize) > 0) css += sel + ' .CCMathView { font-size: ' + Number(design.mathSize) + 'px !important; }';
+    if (Number(design.latexSize) > 0) css += sel + ' .CCLatexInput { font-size: ' + Number(design.latexSize) + 'px !important; }';
+    if (design.toolbar === false) css += sel + ' .CCToolbar { display: none !important; }';
+    if (design.history === false) css += sel + ' .CCEditorBar { display: none !important; }';
+    if (css) {
+        const style = document.createElement('style');
+        style.textContent = css;
+        root.appendChild(style);
+    }
+    if (insertSelect && design.insertAs && insertSelect.querySelector('option[value="' + design.insertAs + '"]')) {
+        insertSelect.value = design.insertAs;
+    }
+    if (latexToggle && design.latex && !latexToggle.checked && !latexToggle.disabled) {
+        latexToggle.checked = true;
+        latexToggle.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+};
+
 const MATHML_ELEMENTS = [
     'math', 'semantics', 'annotation', 'annotation-xml',
     'mrow', 'mi', 'mo', 'mn', 'ms', 'mtext', 'mspace', 'mglyph',
@@ -237,6 +273,7 @@ const setupEditor = (editor) => {
     // A bare host means https; a full origin (e.g. http://localhost:8010 for local development) is used as it is.
     const origin = /^https?:\/\//.test(host) ? host.replace(/\/+$/, '') : `https://${host}`;
     const renderUrl = getRenderUrl(editor);
+    const design = getDesign(editor);
     // The site's "Insert as" setting is the dialog's starting choice; 'url' is its image form.
     const defaultMode = {url: 'svg', latex: 'latex', mathml: 'mathml'}[getInsertAs(editor)] || 'svg';
     const scriptUrl = `${origin}/eqneditor.api.min.js`;
@@ -283,7 +320,7 @@ const setupEditor = (editor) => {
             .addOutput(eqOutput)
             .addHistoryMenu(new window.EqEditor.History(ids.history));
 
-        eqToolbar = window.EqEditor.Toolbar.link(ids.toolbar).addTextArea(eqTextArea);
+        eqToolbar = window.EqEditor.Toolbar.link(ids.toolbar, design.toolbar || 'default', design.toolbarScale || 1).addTextArea(eqTextArea);
 
         const root = document.getElementById(ids.root);
         const latexToggle = document.getElementById(ids.toggleLatex);
@@ -315,6 +352,8 @@ const setupEditor = (editor) => {
             }
             eqOutput.setInline(inline);
         });
+
+        applyDesign(root, design, latexToggle, document.getElementById(ids.insertMode));
     };
 
     const buildInsert = (latex) => {

@@ -93,10 +93,11 @@ class plugininfo extends plugin implements plugin_with_buttons, plugin_with_menu
         ?editor $editor = null
     ): array {
         return [
-            'server' => get_config('tiny_eqneditor', 'server') ?: 'editor.codecogs.com',
+            'server' => get_config('tiny_eqneditor', 'server') ?: 'fxeditor.codecogs.com',
             'licence' => get_config('tiny_eqneditor', 'licence') ?: '',
             'renderurl' => get_config('tiny_eqneditor', 'renderurl') ?: 'https://latex.codecogs.com',
             'insertas' => get_config('tiny_eqneditor', 'insertas') ?: 'url',
+            'design' => get_config('tiny_eqneditor', 'design') ?: '',
         ];
     }
 }

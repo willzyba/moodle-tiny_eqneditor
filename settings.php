@@ -31,7 +31,7 @@ if ($ADMIN->fulltree) {
         'tiny_eqneditor/server',
         get_string('server', 'tiny_eqneditor'),
         get_string('server_desc', 'tiny_eqneditor'),
-        'editor.codecogs.com',
+        'fxeditor.codecogs.com',
         PARAM_HOST
     ));
 
@@ -61,5 +61,13 @@ if ($ADMIN->fulltree) {
             'latex' => get_string('insertas_latex', 'tiny_eqneditor'),
             'mathml' => get_string('insertas_mathml', 'tiny_eqneditor'),
         ]
+    ));
+
+    $settings->add(new admin_setting_configtextarea(
+        'tiny_eqneditor/design',
+        get_string('design', 'tiny_eqneditor'),
+        get_string('design_desc', 'tiny_eqneditor'),
+        '',
+        PARAM_RAW
     ));
 }
