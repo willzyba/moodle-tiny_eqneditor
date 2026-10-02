@@ -43,7 +43,7 @@ classes/plugininfo.php         Registers the button/menu item, passes settings.p
                                 through to the AMD module for the current context.
 lang/en/tiny_eqneditor.php     English strings - button/menu text, dialog title, settings.
 pix/eqneditor.svg              The toolbar button icon (the same fx wordmark as the other
-                                eqneditor-v5-plugins adapters).
+                                fxPlugins adapters).
 amd/src/common.js              Shared constants.
 amd/src/options.js             Reads plugininfo.php's configuration back out of the editor.
 amd/src/commands.js            The toolbar button, menu item, and the dialog itself.

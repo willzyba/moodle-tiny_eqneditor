@@ -17,7 +17,7 @@
  * The toolbar button, menu item, and dialog itself.
  *
  * The same maths-view-only dialog as tinymce/v6/eqneditor.js in the top-level
- * eqneditor-v5-plugins repo - Moodle 4.1+'s own editor *is* TinyMCE 6 - with the LaTeX and
+ * fxPlugins repo - Moodle 4.1+'s own editor *is* TinyMCE 6 - with the LaTeX and
  * Inline toggles bottom-left and "Insert as", Cancel and OK bottom-right. What differs is how
  * configuration is read (options.js, via Moodle's per-context plugin configuration), how the
  * plugin registers itself (Moodle's Tiny plugin API), and a third "Insert as" choice, LaTeX
