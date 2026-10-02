@@ -190,7 +190,7 @@ const injectStyleOverridesOnce = (fontUrl) => {
     const style = document.createElement('style');
     style.id = 'cc-eqneditor-style-overrides';
     style.textContent = `@font-face { font-family: "Latin Modern Math"; font-display: swap; ` +
-        `src: local("Latin Modern Math"), url("${fontUrl}") format("opentype"); }` +
+        `src: local("Latin Modern Math"), url("${fontUrl.replace(/prototypes\/latinmodern-math\.otf$/, 'fonts/LatinModernMath-Regular.woff2')}") format("woff2"), url("${fontUrl}") format("opentype"); }` +
         // Undo host resets (e.g. .cke_reset_all *) inside the toolbar icons and the maths view's MathML.
         '.CCToolbar svg:has(g[font-family]), .CCToolbar svg:has(g[font-family]) * { font: revert-layer !important; }' +
         // Older API builds draw the icons as plain <text>, fonted by the API's own .cc_panel rule instead.

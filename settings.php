@@ -31,7 +31,7 @@ if ($ADMIN->fulltree) {
         'tiny_eqneditor/server',
         get_string('server', 'tiny_eqneditor'),
         get_string('server_desc', 'tiny_eqneditor'),
-        'fxeditor.codecogs.com',
+        'fxtex.codecogs.com',
         PARAM_HOST
     ));
 

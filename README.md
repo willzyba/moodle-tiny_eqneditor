@@ -58,7 +58,7 @@ per-instance override:
 
 | Setting | Default | Meaning |
 |---|---|---|
-| Equation Editor host | `fxeditor.codecogs.com` | Where the Equation Editor's own code is loaded from. Change this only if you run your own copy. |
+| Equation Editor host | `fxtex.codecogs.com` | Where the Equation Editor's own code is loaded from. Change this only if you run your own copy. |
 | Licence key | *(empty)* | Your fxTeX Pro licence key (`fx_pk_...`). Without one the maths view shows a licence error instead of rendering. |
 | Rendering service URL | `https://latex.codecogs.com` | The service that turns an equation into an image, used when *Insert as* is *Image*. |
 | Insert as | Image | The dialog's starting *Insert as* choice (authors can change it per equation): *Image* (an SVG `<img>`), *LaTeX* (`\( \)` when *Inline* is on, `$$ $$` otherwise, for Moodle's MathJax filter - so it only renders where that filter is enabled), or *MathML* (final markup, needs the stylesheet below). |
@@ -77,7 +77,7 @@ needs this line - the same file fxTeX ships - since browsers' own MathML does no
 everything the converter produces:
 
 ```html
-<link rel="stylesheet" href="https://fxeditor.codecogs.com/fxtex.css">
+<link rel="stylesheet" href="https://fxtex.codecogs.com/fxtex.css">
 ```
 
 The plugin loads it into the *editing* view for you; it cannot add it to every place Moodle
@@ -93,5 +93,5 @@ that is a theme-level change, not something a Tiny plugin can reach.
   courses need different `insertas` settings, `get_plugin_configuration_for_context()` in
   `classes/plugininfo.php` is where a per-context override would go.
 - **thirdpartylibs.xml is deliberately absent.** EqEditor's own code is loaded from
-  `fxeditor.codecogs.com` at runtime, the same as every other adapter in this repo - nothing
+  `fxtex.codecogs.com` at runtime, the same as every other adapter in this repo - nothing
   third-party is bundled into this plugin's own codebase for that file to declare.
