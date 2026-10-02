@@ -65,7 +65,7 @@ const loadEqEditorApi = (scriptUrl) => {
 
 // EqEditor.init() switches the converter every TextArea/MathView/Toolbar construction takes on
 // to fxTeX Pro - skip it and they keep the placeholder converter for their whole lifetime, even
-// once eqneditor.api.min.js itself has loaded. Called once per page; an empty licence is the
+// once fxeditor.api.min.js itself has loaded. Called once per page; an empty licence is the
 // normal, expected state until a real one is configured.
 let initPromise = null;
 
@@ -229,7 +229,7 @@ const apiMathRules = () => {
 
 // The API's own @font-face for "Latin Modern Math" only carries local(), so it falls back to a
 // generic serif unless the font happens to be installed; redeclaring it here adds a real url().
-// Everything else is layout the shared eqneditor.css can't be relied on for, and undoing
+// Everything else is layout the shared fxeditor.css can't be relied on for, and undoing
 // TinyMCE's `.tox :not(svg)` reset where it reaches the toolbar icons, MathML and bottom bar.
 const injectStyleOverridesOnce = (fontUrl) => {
     if (document.getElementById('cc-eqneditor-style-overrides')) {
@@ -326,8 +326,8 @@ const setupEditor = (editor) => {
     const design = getDesign(editor);
     // The site's "Insert as" setting is the dialog's starting choice; 'url' is its image form.
     const defaultMode = {url: 'svg', latex: 'latex', mathml: 'mathml'}[getInsertAs(editor)] || 'svg';
-    const scriptUrl = `${origin}/eqneditor.api.min.js`;
-    const cssUrl = `${origin}/eqneditor.css`;
+    const scriptUrl = `${origin}/fxeditor.api.min.js`;
+    const cssUrl = `${origin}/fxeditor.css`;
 
     const apiReady = loadEqEditorApi(scriptUrl);
     loadCssOnce(cssUrl);
