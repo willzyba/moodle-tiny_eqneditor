@@ -215,7 +215,7 @@ const apiMathRules = () => {
             continue;
         }
         for (const r of rules) {
-            if (!r.selectorText || !/(^|,)\s*\.(fxtex|CCMathView)\b/.test(r.selectorText)) {
+            if (!r.selectorText || !/(^|,)\s*(:where\(\.fxEditor\)\s*)?\.(fxtex|CCMathView)\b/.test(r.selectorText)) {
                 continue;
             }
             let decls = '';
@@ -223,7 +223,7 @@ const apiMathRules = () => {
                 decls += `${p}:${r.style.getPropertyValue(p)} !important;`;
             }
             if (decls) {
-                out += r.selectorText.split(',')
+                out += r.selectorText.replace(/:where\(\.fxEditor\)\s*/g, '').split(',')
                     .map((s) => (/^\.CCMathView\b/.test(s.trim()) ? s.trim() : `.CCMathView ${s.trim()}`))
                     .join(',') + `{${decls}}`;
             }
@@ -258,9 +258,10 @@ const injectStyleOverridesOnce = (fontUrl) => {
         apiMathRules() +
         '.CCEqnEditor { display: flex !important; flex-direction: column !important; height: 520px !important; }' +
         '.CCEqnEditor .CCEditorBar, .CCEqnEditor .CCToolbarHost { flex: 0 0 auto; }' +
-        // Left to stretch across the dialog, the toolbar's "fit" pass unwraps every button group
-        // wider than the reference layout; sized to its own content it wraps the same way.
-        '.CCEqnEditor .CCToolbarHost { align-self: flex-start; width: auto; }' +
+        // The toolbar host as wide as the dialog, no wider: sized to its own content instead
+        // (width: auto) it kept the toolbar's whole row and ran past a narrow dialog
+        // (`design.width`); at 100% the toolbar scrolls.
+        '.CCEqnEditor .CCToolbarHost { align-self: flex-start; width: 100%; }' +
         '.CCEqnEditor .CCMathViewHost { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; ' +
             'justify-content: center; overflow: auto; }' +
         '.CCEqnEditor[data-inline="on"] .CCMathViewHost { justify-content: flex-start; }' +
@@ -269,7 +270,7 @@ const injectStyleOverridesOnce = (fontUrl) => {
         '.CCEqnEditor[data-latex="off"] .CCLatexInput { display: none !important; }' +
         '.CCEqnEditor .CCEqnOutput-hidden { display: none !important; }' +
     // The bottom bar: toggles left, Insert-as and the dialog's buttons right, one type size. All !important - host dialog resets otherwise restyle it.
-    '.cc-eqn-bar { display: flex !important; align-items: center !important; gap: 16px !important; flex: 0 0 auto !important; ' +
+    '.cc-eqn-bar { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 16px !important; flex: 0 0 auto !important; ' +
         'margin: 8px 0 0 !important; padding: 10px 0 0 !important; border: 0 !important; border-top: 1px solid #e2e8f0 !important; ' +
         'background: none !important; font: 13px/1.3 system-ui, -apple-system, "Segoe UI", Arial, sans-serif !important; color: #1c2530 !important; }' +
     '.cc-eqn-bar-right { display: flex !important; align-items: center !important; gap: 8px !important; margin: 0 0 0 auto !important; padding: 0 !important; font: inherit !important; color: inherit !important; }' +
@@ -357,9 +358,9 @@ const setupEditor = (editor) => {
                 ${switchHtml(ids.toggleLatex, 'LaTeX markup', 'Show or hide the LaTeX markup')}
                 <div class="cc-eqn-bar-right">
                     <select class="cc-eqn-select" id="${ids.insertMode}" title="How to insert the equation">
-                        ${option('mathml', 'Insert as MathML')}
-                        ${option('svg', 'Insert as image (SVG)')}
-                        ${option('latex', 'Insert as LaTeX (MathJax)')}
+                        ${option('mathml', 'Insert MathML')}
+                        ${option('svg', 'Insert SVG')}
+                        ${option('latex', 'Insert LaTeX (MathJax)')}
                     </select>
                     <button type="button" class="cc-eqn-btn cc-cancel">Cancel</button>
                     <button type="button" class="cc-eqn-btn cc-eqn-primary cc-ok">OK</button>
