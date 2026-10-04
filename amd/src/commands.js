@@ -86,6 +86,46 @@ const ensureInit = (licence) => {
 // author. The toolbar's rows and scale go to Toolbar.link() itself; everything else is applied
 // here, once the editor is mounted - CSS scoped to this editor's root, then the starting state of
 // the LaTeX toggle and the "Insert as" menu.
+// The dialog's size when the design does not set one: about 700 by 450 pixels.
+const DEFAULT_WIDTH = 700, DEFAULT_HEIGHT = 450;
+const designWidth = (design) => (Number(design && design.width) > 0 ? Number(design.width) : DEFAULT_WIDTH);
+const designHeight = (design) => (Number(design && design.height) > 0 ? Number(design.height) : DEFAULT_HEIGHT);
+// Gives an inserted image its size in em once the API has read it (Output.imageSize()): set on
+// the image after it goes in, since waiting before inserting it would lose the editor's selection.
+// Marked with data-cc-size until then; an API without imageSize() leaves the image as it was.
+let sizingCount = 0;
+const sizeImage = (output, apply) => {
+    if (!output || typeof output.imageSize !== 'function') {
+        return '';
+    }
+    const mark = `cc-size-${++sizingCount}-${Date.now()}`;
+    output.imageSize().then((size) => apply(mark, size));
+    return ` data-cc-size="${mark}"`;
+};
+// An equation's own size, against a normal one (Output.setEquationSize()): normal is whatever the
+// site's .fxtex rule makes it, and this scales one equation on top. Chosen in the dialog's Size
+// control when the design shows it (design.sizeControl); otherwise an equation being edited keeps
+// the size it had.
+const SIZES = [50, 75, 100, 125, 150, 200, 300];
+const sizeOptions = () => SIZES.map((pct) => `<option value="${pct}"${pct === 100 ? ' selected' : ''}>${pct}%</option>`).join('');
+const showSize = (select, scale) => {
+    if (!select) {
+        return;
+    }
+    const pct = String(Math.round(scale * 100));
+    if (!select.querySelector(`option[value="${pct}"]`)) {
+        const option = document.createElement('option');
+        option.value = pct;
+        option.textContent = `${pct}%`;
+        select.appendChild(option);
+    }
+    select.value = pct;
+};
+// The size an equation on the page was inserted at - read once the API has loaded, which may be
+// after the double-click that asked for it. 1 without one.
+const sizeOf = (el) => (el && window.EqEditor && window.EqEditor.Output && typeof window.EqEditor.Output.equationSizeOf === 'function'
+    ? window.EqEditor.Output.equationSizeOf(el) : 1);
+
 let designCount = 0;
 const applyDesign = (root, design, latexToggle, insertSelect) => {
     if (!root || !design) return;
@@ -115,9 +155,9 @@ const applyDesign = (root, design, latexToggle, insertSelect) => {
     // size their dialogs themselves (TinyMCE 4, CKEditor 4) are given both when they open it instead.
     const sizedBox = root.closest('.tox-dialog, .mce-window, .cke_dialog, .ck-balloon-panel, .cc-eqneditor-modal, .tc-drop-down') || root;
     if (!sizedBox.matches('.mce-window, .cke_dialog')) {
-        if (Number(design.width) > 0) sizedBox.style.setProperty('width', Number(design.width) + 'px', 'important');
+        sizedBox.style.setProperty('width', designWidth(design) + 'px', 'important');
         const area = root.querySelector('.CCMathViewHost');
-        if (Number(design.height) > 0 && area) {
+        if (area) {
             // Measured, then measured again as the dialog settles - the toolbar fits itself to its row
             // after the dialog first lays out, and the fonts arrive - correcting by the difference each time.
             // A box with a height of its own (Froala's and Tiptap's modals) sizes to its contents instead.
@@ -131,10 +171,10 @@ const applyDesign = (root, design, latexToggle, insertSelect) => {
                 // Scale may already be applied (see below), and on-screen sizes include it.
                 const applied = parseFloat(sizedBox.style.zoom) || parseFloat((sizedBox.style.transform.match(/scale\(([\d.]+)\)/) || [])[1]) || 1;
                 const now = h || shown.getBoundingClientRect().height / applied;
-                h = Math.max(120, Math.round(now + Number(design.height) - sizedBox.getBoundingClientRect().height / applied));
+                h = Math.max(120, Math.round(now + designHeight(design) - sizedBox.getBoundingClientRect().height / applied));
                 // Never taller than the whole dialog asked for: a host that caps its dialog (and scrolls the
                 // rest) would otherwise be chased upwards on every pass.
-                h = Math.min(h, Number(design.height));
+                h = Math.min(h, designHeight(design));
                 sizing.textContent = '#' + root.id + ' { height: auto !important; } #' + root.id + ' .CCMathViewHost, #' + root.id + ' .CCLatexInput { height: ' + h + 'px !important; min-height: ' + h + 'px !important; }';
             };
             fit();
@@ -323,6 +363,7 @@ const setupEditor = (editor) => {
         toggleInline: `cc-eqn-mdl-toggle-inline-${n}`,
         toggleLatex: `cc-eqn-mdl-toggle-latex-${n}`,
         insertMode: `cc-eqn-mdl-insert-mode-${n}`,
+        size: `cc-eqn-mdl-size-${n}`,
     };
 
     const host = getServer(editor);
@@ -357,6 +398,9 @@ const setupEditor = (editor) => {
                 ${switchHtml(ids.toggleInline, 'Inline', 'Left-align the equation instead of centring it')}
                 ${switchHtml(ids.toggleLatex, 'LaTeX markup', 'Show or hide the LaTeX markup')}
                 <div class="cc-eqn-bar-right">
+                    ${design.sizeControl
+                        ? `<select class="cc-eqn-select" id="${ids.size}" title="This equation's size, against a normal one">${sizeOptions()}</select>`
+                        : ''}
                     <select class="cc-eqn-select" id="${ids.insertMode}" title="How to insert the equation">
                         ${option('mathml', 'Insert MathML')}
                         ${option('svg', 'Insert SVG')}
@@ -422,13 +466,25 @@ const setupEditor = (editor) => {
         if (mode === 'svg') {
             // referrerpolicy explicitly: latex.codecogs.com identifies the calling site by
             // referer, and a stricter page policy would otherwise send none.
-            return `<img src="${escapeHtml(eqOutput.exportAs('url'))}" alt="${escapeHtml(latex)}" referrerpolicy="origin">`;
+            const size = sizeImage(eqOutput, (mark, got) => {
+                const img = editor.dom.select(`img[data-cc-size="${mark}"]`)[0];
+                if (!img) {
+                    return;
+                }
+                if (got) {
+                    editor.dom.setStyles(img, {width: got.width, height: got.height});
+                }
+                editor.dom.setAttrib(img, 'data-cc-size', null);
+            });
+            return `<img class="fxtex" src="${escapeHtml(eqOutput.exportAs('url'))}" alt="${escapeHtml(latex)}" referrerpolicy="origin"${size}>`;
         }
         return eqOutput.exportAs('mathml');
     };
 
-    const showDialog = async(latex = '') => {
+    // `el`, when editing: the equation on the page, whose size the dialog starts from.
+    const showDialog = async(latex = '', el = null) => {
         const dialogTitle = await getString('dialogtitle', component);
+        let startSize = 1;
 
         // No native footer: Cancel and OK live in the editor's own bottom bar, beside the
         // toggles and "Insert as".
@@ -452,6 +508,10 @@ const setupEditor = (editor) => {
         const insertAndClose = () => {
             const current = eqTextArea ? eqTextArea.getTextArea().textContent.trim() : '';
             if (current) {
+                if (eqOutput.setEquationSize) {
+                    const sizeSelect = document.getElementById(ids.size);
+                    eqOutput.setEquationSize(sizeSelect ? Number(sizeSelect.value) / 100 : startSize);
+                }
                 editor.execCommand('mceInsertContent', false, buildInsert(current));
                 eqTextArea.pushToHistory();
             }
@@ -463,6 +523,8 @@ const setupEditor = (editor) => {
         apiReady.then(() => ensureInit(getLicence(editor))).then(() => {
             injectStyleOverridesOnce(cssUrl.slice(0, cssUrl.lastIndexOf('/') + 1) + 'prototypes/latinmodern-math.otf');
             mount();
+            startSize = sizeOf(el);
+            showSize(document.getElementById(ids.size), startSize);
             eqTextArea.clear();
             if (latex) {
                 eqTextArea.insert(latex, latex.length);
@@ -510,7 +572,7 @@ const setupEditor = (editor) => {
         if (target.nodeName.toLowerCase() === 'img') {
             const match = target.src.match(/(gif|svg|png)\.image\?(.*)/);
             if (match) {
-                showDialog(decodeEquation(match[2]));
+                showDialog(decodeEquation(match[2]), target);
             }
             return;
         }
@@ -519,7 +581,7 @@ const setupEditor = (editor) => {
         if (math) {
             const mathLatex = math.getAttribute('title').trim();
             if (mathLatex) {
-                showDialog(mathLatex);
+                showDialog(mathLatex, math);
             }
         }
     });
