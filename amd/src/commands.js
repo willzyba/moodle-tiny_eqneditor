@@ -245,6 +245,33 @@ const escapeHtml = (s) => String(s)
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 // Re-asserts the API's own .CCMathView/.fxtex rules, which host resets and revert-layer override.
+// Ready to type into, with its cursor showing: the MathView (or the LaTeX pane, when that is the
+// one showing) takes focus as the dialog opens - otherwise focus stays on whatever opened it.
+// The API draws the MathView's caret where the cursor is at that moment and only redraws it on an
+// edit or on focus, but a dialog goes on settling after it opens (fonts arrive, the toolbar fits
+// itself to its row) and moves the equation out from under it. Its focus handler only redraws
+// (the cursor stays where it is), so it is fired again whenever the editing area changes size.
+const focusEditor = (root) => {
+    if (!root) {
+        return;
+    }
+    const pane = root.querySelector(root.getAttribute('data-latex') === 'on' ? '.CCLatexInput' : '.CCMathView');
+    if (pane) {
+        pane.focus({preventScroll: true});
+    }
+    const view = root.querySelector('.CCMathView');
+    const host = view && view.parentElement;
+    if (host && !host.ccCaretWatch && typeof ResizeObserver !== 'undefined') {
+        host.ccCaretWatch = new ResizeObserver(() => {
+            const mv = host.querySelector('.CCMathView');
+            if (mv && document.activeElement === mv) {
+                mv.dispatchEvent(new FocusEvent('focus'));
+            }
+        });
+        host.ccCaretWatch.observe(host);
+    }
+};
+
 const apiMathRules = () => {
     let out = '';
     for (const sheet of document.styleSheets) {
@@ -266,6 +293,37 @@ const apiMathRules = () => {
                 out += r.selectorText.replace(/:where\(\.fxEditor\)\s*/g, '').split(',')
                     .map((s) => (/^\.CCMathView\b/.test(s.trim()) ? s.trim() : `.CCMathView ${s.trim()}`))
                     .join(',') + `{${decls}}`;
+            }
+        }
+    }
+    return out;
+};
+
+// The same for the MathView's drawn caret and the area it is positioned in: TinyMCE's skin
+// (.tox :not(svg):not(rect) - position: static; width: auto; background) outranks the API's
+// own rules, and left alone the caret had no size, colour or place - no cursor at all. Every
+// declaration but display, which the API sets on the element itself to show and hide it.
+const apiCaretRules = () => {
+    let out = '';
+    for (const sheet of document.styleSheets) {
+        let rules;
+        try {
+            rules = sheet.cssRules;
+        } catch (e) {
+            continue;
+        }
+        for (const r of rules) {
+            if (!r.selectorText || !/\.CCMathView(Caret|Wrap)\b/.test(r.selectorText)) {
+                continue;
+            }
+            let decls = '';
+            for (const p of r.style) {
+                if (p !== 'display') {
+                    decls += `${p}:${r.style.getPropertyValue(p)} !important;`;
+                }
+            }
+            if (decls) {
+                out += r.selectorText.replace(/:where\(\.fxEditor\)\s*/g, '') + `{${decls}}`;
             }
         }
     }
@@ -295,7 +353,7 @@ const injectStyleOverridesOnce = (fontUrl) => {
             'width: revert-layer !important; height: revert-layer !important; padding: revert-layer !important; ' +
             'margin: revert-layer !important; text-transform: revert-layer !important; text-align: revert-layer !important; ' +
             'box-sizing: revert-layer !important; white-space: revert-layer !important; }' +
-        apiMathRules() +
+        apiMathRules() + apiCaretRules() +
         '.CCEqnEditor { display: flex !important; flex-direction: column !important; height: 520px !important; }' +
         '.CCEqnEditor .CCEditorBar, .CCEqnEditor .CCToolbarHost { flex: 0 0 auto; }' +
         // The toolbar host as wide as the dialog, no wider: sized to its own content instead
@@ -530,6 +588,7 @@ const setupEditor = (editor) => {
                 eqTextArea.insert(latex, latex.length);
             }
             eqTextArea.notifyOutputs();
+            focusEditor(document.getElementById(ids.root));
 
             const root = document.getElementById(ids.root);
             root.querySelector('.cc-cancel').addEventListener('click', () => dialog.close());
