@@ -14,31 +14,85 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Reads this plugin's per-instance configuration back out of the editor - the values
- * classes/plugininfo.php::get_plugin_configuration_for_context() put there, read via Moodle's
- * standard editor_tiny/options helper rather than editor.getParam() (the TinyMCE-native way
- * the standalone tinymce/v6/eqneditor.js plugin reads its own options), since Tiny plugin
- * configuration is threaded through per-context, not passed straight into tinymce.init().
+ * This plugin's settings, as the editor holds them. classes/plugininfo.php's
+ * get_plugin_configuration_for_context() supplies the values; editor_tiny passes each one in as an
+ * editor option named <pluginName>:<key>, and TinyMCE only keeps an option that has been registered
+ * first - so register() runs when the plugin is added to an editor (plugin.js), and the getters
+ * read the values back.
  *
  * @module      tiny_eqneditor/options
  * @copyright   2026 CodeCogs <https://www.codecogs.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import {getPluginOptions} from 'editor_tiny/options';
-import {component} from './common';
+import {getPluginOptionName} from 'editor_tiny/options';
+import {pluginName} from './common';
 
-export const getServer = (editor) => getPluginOptions(editor, component).server || 'fxtex.codecogs.com';
-export const getLicence = (editor) => getPluginOptions(editor, component).licence || '';
-export const getRenderUrl = (editor) => getPluginOptions(editor, component).renderurl || 'https://latex.codecogs.com';
+const serverName = getPluginOptionName(pluginName, 'server');
+const licenceName = getPluginOptionName(pluginName, 'licence');
+const renderUrlName = getPluginOptionName(pluginName, 'renderurl');
+const insertAsName = getPluginOptionName(pluginName, 'insertas');
+const designName = getPluginOptionName(pluginName, 'design');
+
+/**
+ * Registers the plugin's options with an editor, so the values editor_tiny passes in are kept.
+ *
+ * @param {object} editor The TinyMCE editor
+ */
+export const register = (editor) => {
+    const registerOption = editor.options.register;
+    registerOption(serverName, {processor: 'string', "default": 'fxtex.codecogs.com'});
+    registerOption(licenceName, {processor: 'string', "default": ''});
+    registerOption(renderUrlName, {processor: 'string', "default": 'https://latex.codecogs.com'});
+    registerOption(insertAsName, {processor: 'string', "default": 'url'});
+    registerOption(designName, {processor: 'string', "default": ''});
+};
+
+/**
+ * The host the editor itself is loaded from.
+ *
+ * @param {object} editor The TinyMCE editor
+ * @returns {string}
+ */
+export const getServer = (editor) => editor.options.get(serverName) || 'fxtex.codecogs.com';
+
+/**
+ * The fxTeX Pro licence key.
+ *
+ * @param {object} editor The TinyMCE editor
+ * @returns {string}
+ */
+export const getLicence = (editor) => editor.options.get(licenceName) || '';
+
+/**
+ * Where equation images are rendered.
+ *
+ * @param {object} editor The TinyMCE editor
+ * @returns {string}
+ */
+export const getRenderUrl = (editor) => editor.options.get(renderUrlName) || 'https://latex.codecogs.com';
+
+/**
+ * The editor's design, from the JSON setting - none at all when it does not parse.
+ *
+ * @param {object} editor The TinyMCE editor
+ * @returns {object}
+ */
 export const getDesign = (editor) => {
     try {
-        return JSON.parse(getPluginOptions(editor, component).design || '{}') || {};
+        return JSON.parse(editor.options.get(designName) || '{}') || {};
     } catch (e) {
         return {};
     }
 };
+
+/**
+ * What an equation is inserted as: 'url' (an image), 'latex' or 'mathml'.
+ *
+ * @param {object} editor The TinyMCE editor
+ * @returns {string}
+ */
 export const getInsertAs = (editor) => {
-    const value = getPluginOptions(editor, component).insertas || 'url';
+    const value = editor.options.get(insertAsName) || 'url';
     return ['url', 'latex', 'mathml'].includes(value) ? value : 'url';
 };

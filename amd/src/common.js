@@ -22,7 +22,12 @@
  */
 
 export const component = 'tiny_eqneditor';
-export const pluginName = 'Equation Editor';
-export const buttonName = 'eqneditor';
-export const menuItemName = 'eqneditor';
+// The name editor_tiny knows the plugin by - its module, tiny_eqneditor/plugin - and the prefix of
+// every option it passes in from classes/plugininfo.php (tiny_eqneditor/plugin:server, ...).
+export const pluginName = 'tiny_eqneditor/plugin';
+// Shown in TinyMCE's Help > Plugins list.
+export const displayName = 'Equation Editor';
+// The toolbar button and Insert menu item; configuration.js places them.
+export const buttonName = component;
+export const menuItemName = component;
 export const icon = 'eqneditor';

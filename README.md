@@ -7,16 +7,29 @@ subsystem, `editor_tiny`), so this wraps the same dialog code as
 plugin registration and configuration APIs. See that plugin's own comments for the reasoning
 behind the dialog's behaviour; this file only covers what is Moodle-specific.
 
-**This plugin has not been tested against a running Moodle instance** - there is no Moodle
-codebase in this repository to test it against. The dialog itself has been exercised in a
-browser harness (TinyMCE 6 with `editor_tiny/utils`, `editor_tiny/options` and `core/str`
-stubbed out): toolbar and maths view match the reference editor, and SVG, LaTeX and MathML
-inserts and double-click editing all work. Every file follows Moodle's documented
-`editor_tiny` plugin API (https://moodledev.io/docs/apis/plugintypes/editor_tiny) as closely as
-current knowledge of it allows, and the PHP has been checked for syntax errors
-(`php -l` on every file), but it has not been installed and clicked through on a real site.
-Do that before shipping it - ideally against the range of Moodle versions you intend to
-support, since the Tiny plugin API has moved between minor releases.
+**Tested on Moodle 4.5 LTS** (4.5.15+, PHP 8.3, PostgreSQL, Docker - see "Testing locally"
+below), November 2026: installed, the Equation button in the toolbar's overflow and the Insert
+menu, the dialog, and an SVG insert with its LaTeX as alt text. That first install found three
+bugs that would have broken every school installing it, now fixed: no `amd/build` (Moodle loads
+only built modules, so the failed load took down every TinyMCE editor on the site), options read
+through a helper `editor_tiny/options` does not have, and no `configuration` module, so the button
+was never placed on the toolbar. Not yet tried on other Moodle versions; the Tiny plugin API has
+moved between minor releases since 4.1.
+
+### Testing locally
+
+`/Users/will/Data/Vultr/moodle-dev` (outside this repo) holds a Moodle 4.5 checkout and
+moodlehq/moodle-docker, with this directory bind-mounted into the site
+(`moodle-docker/local.yml`): `source env.sh && moodle-docker/bin/moodle-docker-compose up -d`,
+then http://localhost:8000. After changing `amd/src`, rebuild with Moodle's own toolchain (Node
+22, in Docker) and commit `amd/build` with it:
+
+```bash
+cd /Users/will/Data/Vultr/moodle-dev
+rsync -a --delete /Users/will/Data/Vultr/fxPlugins/moodle/tiny_eqneditor/ moodle/lib/editor/tiny/plugins/eqneditor/
+docker run --rm -v "$PWD/moodle:/moodle" -w /moodle node:22 npx grunt amd --root=lib/editor/tiny/plugins/eqneditor
+rsync -a moodle/lib/editor/tiny/plugins/eqneditor/amd/build/ /Users/will/Data/Vultr/fxPlugins/moodle/tiny_eqneditor/amd/build/
+```
 
 ## Installing
 

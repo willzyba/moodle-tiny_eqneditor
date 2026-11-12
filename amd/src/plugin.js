@@ -25,20 +25,24 @@
 
 import {getTinyMCE} from 'editor_tiny/loader';
 import {getPluginMetadata} from 'editor_tiny/utils';
-import {component, pluginName} from './common';
+import {component, pluginName, displayName} from './common';
 import {getSetup as getCommandSetup} from './commands';
+import * as Configuration from './configuration';
+import * as Options from './options';
 
-// Resolves to [component, {}] once the plugin is registered, as editor_tiny expects of every
-// plugin module's default export.
+// Resolves to [pluginName, Configuration] once the plugin is registered, as editor_tiny expects of
+// every plugin module's default export: the name it is added to TinyMCE under, which is also the
+// prefix of its options (options.js), and the module that places its button (configuration.js).
 export default Promise.all([
     getTinyMCE(),
-    getPluginMetadata(component, pluginName),
+    getPluginMetadata(component, displayName),
     getCommandSetup(),
 ]).then(([tinyMCE, pluginMetadata, setupCommands]) => {
-    tinyMCE.PluginManager.add(component, (editor) => {
+    tinyMCE.PluginManager.add(pluginName, (editor) => {
+        Options.register(editor);
         setupCommands(editor);
         return pluginMetadata;
     });
 
-    return [component, {}];
+    return [pluginName, Configuration];
 });
