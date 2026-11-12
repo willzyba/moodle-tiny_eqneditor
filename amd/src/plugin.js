@@ -28,17 +28,17 @@ import {getPluginMetadata} from 'editor_tiny/utils';
 import {component, pluginName} from './common';
 import {getSetup as getCommandSetup} from './commands';
 
-export default new Promise(async(resolve) => {
-    const [tinyMCE, pluginMetadata, setupCommands] = await Promise.all([
-        getTinyMCE(),
-        getPluginMetadata(component, pluginName),
-        getCommandSetup(),
-    ]);
-
+// Resolves to [component, {}] once the plugin is registered, as editor_tiny expects of every
+// plugin module's default export.
+export default Promise.all([
+    getTinyMCE(),
+    getPluginMetadata(component, pluginName),
+    getCommandSetup(),
+]).then(([tinyMCE, pluginMetadata, setupCommands]) => {
     tinyMCE.PluginManager.add(component, (editor) => {
         setupCommands(editor);
         return pluginMetadata;
     });
 
-    resolve([component, {}]);
+    return [component, {}];
 });

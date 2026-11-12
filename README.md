@@ -21,12 +21,15 @@ support, since the Tiny plugin API has moved between minor releases.
 ## Installing
 
 1. Copy this directory to `<moodle>/lib/editor/tiny/plugins/eqneditor`.
-2. Build the AMD JavaScript - Moodle only ships `amd/src`, not a `amd/build` compiled from it:
+2. Nothing to build: Moodle loads `amd/build/*.min.js`, which ships alongside `amd/src`. After
+   changing anything in `amd/src`, rebuild it (Moodle's Node toolchain, from the Moodle root) and
+   commit the result with the change - without `amd/build`, Moodle reports "No define call for
+   tiny_eqneditor/plugin" and every TinyMCE editor on the site fails to load:
    ```
    cd <moodle>
    npx grunt amd --root=lib/editor/tiny/plugins/eqneditor
    ```
-   (or `npx grunt` for the whole site, if this is part of a larger set of changes.)
+   `grunt amd` lints first (Moodle's eslint rules) and refuses to build on any error.
 3. Visit *Site administration &rarr; Notifications* to complete the install.
 4. *Site administration &rarr; Plugins &rarr; Text editors &rarr; TinyMCE editor &rarr; General*
    - add **Equation** to the toolbar configuration.
@@ -41,6 +44,7 @@ version.php                    Plugin version/requires - standard for every Mood
 settings.php                   Site admin settings (server, renderurl, insertas).
 classes/plugininfo.php         Registers the button/menu item, passes settings.php's values
                                 through to the AMD module for the current context.
+classes/privacy/provider.php   Privacy API: a null provider - the plugin stores no personal data.
 lang/en/tiny_eqneditor.php     English strings - button/menu text, dialog title, settings.
 pix/eqneditor.svg              The toolbar button icon (the same fx wordmark as the other
                                 fxPlugins adapters).
@@ -48,6 +52,7 @@ amd/src/common.js              Shared constants.
 amd/src/options.js             Reads plugininfo.php's configuration back out of the editor.
 amd/src/commands.js            The toolbar button, menu item, and the dialog itself.
 amd/src/plugin.js              Entry point - registers with TinyMCE's PluginManager.
+amd/build/*.min.js(.map)       What Moodle actually loads - built from amd/src by `grunt amd`.
 ```
 
 ## Configuration
