@@ -20,7 +20,7 @@
  * per-course or per-instance override yet.
  *
  * @package     tiny_eqneditor
- * @copyright   2026 CodeCogs <https://www.codecogs.com>
+ * @copyright   2026 CodeCogs, Zyba Ltd. <https://www.codecogs.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

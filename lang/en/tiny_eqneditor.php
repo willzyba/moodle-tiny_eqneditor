@@ -18,7 +18,7 @@
  * English language strings for tiny_eqneditor.
  *
  * @package     tiny_eqneditor
- * @copyright   2026 CodeCogs <https://www.codecogs.com>
+ * @copyright   2026 CodeCogs, Zyba Ltd. <https://www.codecogs.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -44,7 +44,7 @@ $string['latex_title'] = 'Show or hide the LaTeX markup';
 $string['latexresize'] = 'Resize the LaTeX markup';
 $string['latexresize_title'] = 'Drag to share the space between the LaTeX and the equation';
 $string['licence'] = 'Licence key';
-$string['licence_desc'] = 'Your fxTeX Pro licence key (fx_pk_...). Keys are free: register at editor.codecogs.com and create one for this site\'s domain. The key is not secret - it is sent to every browser that opens the editor - and only works on the domains it was issued for.';
+$string['licence_desc'] = 'Your fxTeX Pro licence key (fx_pk_...). Keys are free: get one for this site\'s domain from https://fxeditor.codecogs.com/purchase. The key is not secret - it is sent to every browser that opens the editor - and only works on the domains it was issued for.';
 $string['loaderror'] = 'The CodeCogs Equation Editor could not be loaded.';
 $string['menuitem_eqneditor'] = 'Equation...';
 $string['ok'] = 'OK';

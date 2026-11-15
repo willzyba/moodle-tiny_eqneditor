@@ -24,7 +24,7 @@
  * text, for sites that render maths with Moodle's MathJax filter. Keep the two in step by hand.
  *
  * @module      tiny_eqneditor/commands
- * @copyright   2026 CodeCogs <https://www.codecogs.com>
+ * @copyright   2026 CodeCogs, Zyba Ltd. <https://www.codecogs.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

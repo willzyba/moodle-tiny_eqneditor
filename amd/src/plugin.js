@@ -19,7 +19,7 @@
  * https://moodledev.io/docs/apis/plugintypes/editor_tiny.
  *
  * @module      tiny_eqneditor/plugin
- * @copyright   2026 CodeCogs <https://www.codecogs.com>
+ * @copyright   2026 CodeCogs, Zyba Ltd. <https://www.codecogs.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

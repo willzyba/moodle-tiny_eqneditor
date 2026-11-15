@@ -21,7 +21,7 @@
  * read the values back.
  *
  * @module      tiny_eqneditor/options
- * @copyright   2026 CodeCogs <https://www.codecogs.com>
+ * @copyright   2026 CodeCogs, Zyba Ltd. <https://www.codecogs.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

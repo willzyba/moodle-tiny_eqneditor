@@ -32,7 +32,7 @@ use core_privacy\local\request\userlist;
  * request methods below have nothing to find, export or delete.
  *
  * @package     tiny_eqneditor
- * @copyright   2026 CodeCogs <https://www.codecogs.com>
+ * @copyright   2026 CodeCogs, Zyba Ltd. <https://www.codecogs.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class provider implements

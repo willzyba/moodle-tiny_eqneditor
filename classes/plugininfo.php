@@ -28,7 +28,7 @@ use editor_tiny\plugin_with_menuitems;
  * https://moodledev.io/docs/apis/plugintypes/editor_tiny.
  *
  * @package     tiny_eqneditor
- * @copyright   2026 CodeCogs <https://www.codecogs.com>
+ * @copyright   2026 CodeCogs, Zyba Ltd. <https://www.codecogs.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class plugininfo extends plugin implements plugin_with_buttons, plugin_with_configuration, plugin_with_menuitems {

@@ -67,9 +67,9 @@ The **Equation** button then appears on the editor's toolbar, and under *Insert 
 ## Licence key
 
 Equations are rendered by fxTeX Pro, which needs a licence key for your site's domain. **For
-Moodle sites the key is free.** Register at https://editor.codecogs.com and create a key for
-your Moodle site's domain in the licence manager. There is nothing to pay, for the key or for
-anything the plugin does. A key only works on the domains it was issued for. It is not a secret -
+Moodle sites the key is free.** Get a key for your Moodle site's domain from
+https://fxeditor.codecogs.com/purchase. There is nothing to pay, for the key or for anything the
+plugin does. A key only works on the domains it was issued for. It is not a secret -
 it is sent to every browser that opens the editor.
 
 Without a key the editor opens and equations can still be written in LaTeX and inserted as
@@ -109,11 +109,13 @@ Site-wide, on the same page:
 
 ## Licence
 
-This plugin is free software under the GNU GPL v3 or later - see `LICENSE`. It contains no
+Copyright (c) 2026 CodeCogs, Zyba Ltd.
+
+This plugin is free software under the GNU General Public License, version 3 or later, as Moodle
+requires of its plugins - see
+[`LICENSE`](https://github.com/willzyba/moodle-tiny_eqneditor/blob/main/LICENSE). It contains no
 third-party code: the equation editor and fxTeX Pro are not part of this package, and are
 loaded from the equation editor host at run time under CodeCogs' own terms.
-
-Copyright 2026 CodeCogs (https://www.codecogs.com).
 
 ## External services
 
