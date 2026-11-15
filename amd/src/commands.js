@@ -29,10 +29,20 @@
  */
 
 import {getButtonImage} from 'editor_tiny/utils';
-import {getString} from 'core/str';
+import {getString, getStrings} from 'core/str';
 import Log from 'core/log';
 import {component, buttonName, menuItemName, icon} from './common';
 import {getServer, getLicence, getRenderUrl, getInsertAs, getDesign} from './options';
+
+// The dialog's text, from lang/en/tiny_eqneditor.php - fetched once in getSetup(), before any
+// dialog can open, so the code that builds the dialog can use it as it stands.
+const STRING_KEYS = [
+    'cancel', 'inline', 'inline_title', 'insertas_menu', 'insert_latex', 'insert_mathml', 'insert_svg',
+    'latex', 'latex_placeholder', 'latex_title', 'latexresize', 'latexresize_title', 'loaderror', 'ok',
+    'predictor', 'predictor_title', 'predictorhide', 'predictorpanel', 'predictorresize', 'size_title',
+    'toolbarsize', 'toolbarsize_title',
+];
+let str = {};
 
 let scriptPromise = null;
 
@@ -359,10 +369,11 @@ function addEditorControls(root, design, parts) {
     if (toolbar && bar && design.toolbar !== false && !bar.querySelector('.cc-toolbar-size')) {
         let size = document.createElement('label');
         size.className = 'cc-toolbar-size';
-        size.title = 'The toolbar’s size';
-        size.innerHTML = '<input type="range" min="50" max="120" step="5" aria-label="Toolbar size"><output></output>';
+        size.title = str.toolbarsize_title;
+        size.innerHTML = '<input type="range" min="50" max="120" step="5"><output></output>';
         bar.appendChild(size);
         let range = size.querySelector('input');
+        range.setAttribute('aria-label', str.toolbarsize);
         let shown = size.querySelector('output');
         let setSize = function(pct) {
             pct = Math.min(120, Math.max(50, Math.round(Number(pct) / 5) * 5 || 100));
@@ -381,7 +392,7 @@ function addEditorControls(root, design, parts) {
     // Inline: the host's own switch, or one added before LaTeX where it has none.
     let inline = parts.inlineToggle;
     if (!inline && latexLabel) {
-        let inlineLabel = makeSwitch('Inline', 'An inline equation, set to sit in a line of text');
+        let inlineLabel = makeSwitch(str.inline, str.inline_title);
         latexLabel.parentNode.insertBefore(inlineLabel, latexLabel);
         inline = inlineLabel.querySelector('input');
         inline.addEventListener('change', function() {
@@ -429,7 +440,7 @@ function addEditorControls(root, design, parts) {
             save();
         });
         if (predictor) {
-            let predictorLabel = makeSwitch('Predictor', 'Suggested equations, as you write');
+            let predictorLabel = makeSwitch(str.predictor, str.predictor_title);
             latexLabel.parentNode.insertBefore(predictorLabel, latexLabel.nextSibling);
             predictorBox = predictorLabel.querySelector('input');
             predictorBox.checked = typeof prefs.predictor === 'boolean' ? prefs.predictor : !!design.predictor;
@@ -473,8 +484,8 @@ function stackPanes(root, prefs, save) {
     grip.tabIndex = 0;
     grip.setAttribute('role', 'separator');
     grip.setAttribute('aria-orientation', 'horizontal');
-    grip.setAttribute('aria-label', 'Resize the LaTeX markup');
-    grip.title = 'Drag to share the space between the LaTeX and the equation';
+    grip.setAttribute('aria-label', str.latexresize);
+    grip.title = str.latexresize_title;
     panes.appendChild(markup);
     panes.appendChild(grip);
     panes.appendChild(host);
@@ -637,17 +648,17 @@ function addPredictor(root, design, textArea, mathView, onOff) {
     bar.className = 'cc-eqn-split';
     bar.tabIndex = 0;
     bar.setAttribute('role', 'separator');
-    bar.setAttribute('aria-label', 'Resize the suggested equations');
+    bar.setAttribute('aria-label', str.predictorresize);
     let fold = document.createElement('button');
     fold.type = 'button';
     fold.className = 'cc-eqn-split-fold';
-    fold.title = 'Hide suggested equations';
+    fold.title = str.predictorhide;
     bar.appendChild(fold);
 
     let side = document.createElement('aside');
     side.className = 'cc-eqn-predictor';
     side.id = root.id + '-predictor';
-    side.setAttribute('aria-label', 'Suggested equations');
+    side.setAttribute('aria-label', str.predictorpanel);
 
     work.appendChild(panes);
     work.appendChild(bar);
@@ -1097,10 +1108,10 @@ const injectStyleOverridesOnce = (fontUrl) => {
 };
 
 const switchHtml = (id, label, title) => `
-    <label class="cc-switch" title="${title}">
+    <label class="cc-switch" title="${escapeHtml(title)}">
         <input type="checkbox" id="${id}">
         <span class="cc-switch-track"><span class="cc-switch-knob"></span></span>
-        <span class="cc-switch-label">${label}</span>
+        <span class="cc-switch-label">${escapeHtml(label)}</span>
     </label>`;
 
 let instanceCount = 0;
@@ -1139,10 +1150,11 @@ const setupEditor = (editor) => {
     let eqMathView = null;
     let eqToolbar = null;
 
-    const option = (value, label) => `<option value="${value}"${value === defaultMode ? ' selected' : ''}>${label}</option>`;
+    const option = (value, label) =>
+        `<option value="${value}"${value === defaultMode ? ' selected' : ''}>${escapeHtml(label)}</option>`;
 
     const sizeHtml = () => (design.sizeControl
-        ? `<select class="cc-eqn-select" id="${ids.size}" title="This equation's size, against a normal one">` +
+        ? `<select class="cc-eqn-select" id="${ids.size}" title="${escapeHtml(str.size_title)}">` +
             `${sizeOptions()}</select>`
         : '');
 
@@ -1151,20 +1163,21 @@ const setupEditor = (editor) => {
             <div class="CCEditorBar"><div id="${ids.history}" class="CCHistory"></div></div>
             <div id="${ids.toolbar}" class="CCToolbarHost"></div>
             <div id="${ids.mathview}" class="CCMathViewHost"></div>
-            <div id="${ids.latexInput}" class="CCLatexInput" autocorrect="off" placeholder="Write LaTeX here..."></div>
+            <div id="${ids.latexInput}" class="CCLatexInput" autocorrect="off"
+                placeholder="${escapeHtml(str.latex_placeholder)}"></div>
             <img id="${ids.output}" class="CCEqnOutput-hidden" alt="">
             <div class="cc-eqn-bar">
-                ${switchHtml(ids.toggleInline, 'Inline', 'Left-align the equation instead of centring it')}
-                ${switchHtml(ids.toggleLatex, 'LaTeX', 'Show or hide the LaTeX markup')}
+                ${switchHtml(ids.toggleInline, str.inline, str.inline_title)}
+                ${switchHtml(ids.toggleLatex, str.latex, str.latex_title)}
                 <div class="cc-eqn-bar-right">
                     ${sizeHtml()}
-                    <select class="cc-eqn-select" id="${ids.insertMode}" title="How to insert the equation">
-                        ${option('mathml', 'Insert MathML')}
-                        ${option('svg', 'Insert SVG')}
-                        ${option('latex', 'Insert LaTeX (MathJax)')}
+                    <select class="cc-eqn-select" id="${ids.insertMode}" title="${escapeHtml(str.insertas_menu)}">
+                        ${option('mathml', str.insert_mathml)}
+                        ${option('svg', str.insert_svg)}
+                        ${option('latex', str.insert_latex)}
                     </select>
-                    <button type="button" class="cc-eqn-btn cc-cancel">Cancel</button>
-                    <button type="button" class="cc-eqn-btn cc-eqn-primary cc-ok">OK</button>
+                    <button type="button" class="cc-eqn-btn cc-cancel">${escapeHtml(str.cancel)}</button>
+                    <button type="button" class="cc-eqn-btn cc-eqn-primary cc-ok">${escapeHtml(str.ok)}</button>
                 </div>
             </div>
         </div>`;
@@ -1306,7 +1319,7 @@ const setupEditor = (editor) => {
         }).catch((err) => {
             Log.error(err);
             dialog.close();
-            editor.notificationManager.open({text: 'The CodeCogs Equation Editor could not be loaded.', type: 'error'});
+            editor.notificationManager.open({text: str.loaderror, type: 'error'});
         });
     };
 
@@ -1364,11 +1377,13 @@ const setupEditor = (editor) => {
  * @returns {Promise<function(object): void>}
  */
 export const getSetup = async() => {
-    const [buttonText, menuItemText, buttonImage] = await Promise.all([
+    const [buttonText, menuItemText, buttonImage, dialogStrings] = await Promise.all([
         getString('button_eqneditor', component),
         getString('menuitem_eqneditor', component),
         getButtonImage('eqneditor', component),
+        getStrings(STRING_KEYS.map((key) => ({key, component}))),
     ]);
+    str = Object.fromEntries(STRING_KEYS.map((key, i) => [key, dialogStrings[i]]));
 
     return (editor) => {
         editor.ui.registry.addIcon(icon, buttonImage.html);

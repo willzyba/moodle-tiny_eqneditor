@@ -1,115 +1,123 @@
-# tiny_eqneditor
+# CodeCogs Equation Editor for TinyMCE (tiny_eqneditor)
 
-The [CodeCogs Equation Editor](https://editor.codecogs.com) as a Moodle **Tiny** editor
-plugin - Moodle 4.1 and later ship TinyMCE 6 as their default editor (the "Tiny" editor
-subsystem, `editor_tiny`), so this wraps the same dialog code as
-[`tinymce/v6/eqneditor.js`](../../tinymce/v6/eqneditor.js) in this repo, adapted to Moodle's
-plugin registration and configuration APIs. See that plugin's own comments for the reasoning
-behind the dialog's behaviour; this file only covers what is Moodle-specific.
+Adds an **Equation** button to Moodle's TinyMCE editor, so teachers and students can write
+mathematics anywhere Moodle has a text editor - a quiz question, a forum post, a page, an
+assignment - using the CodeCogs Equation Editor: a toolbar of symbols and structures, a
+what-you-see-is-what-you-get maths view, and the LaTeX source beside it. Equations go into the
+content as an image, as LaTeX for Moodle's MathJax filter, or as MathML, and a double-click on
+an equation opens it again for editing.
 
-**Tested on Moodle 4.5 LTS** (4.5.15+, PHP 8.3, PostgreSQL, Docker - see "Testing locally"
-below), November 2026: installed, the Equation button in the toolbar's overflow and the Insert
-menu, the dialog, and an SVG insert with its LaTeX as alt text. That first install found three
-bugs that would have broken every school installing it, now fixed: no `amd/build` (Moodle loads
-only built modules, so the failed load took down every TinyMCE editor on the site), options read
-through a helper `editor_tiny/options` does not have, and no `configuration` module, so the button
-was never placed on the toolbar. Not yet tried on other Moodle versions; the Tiny plugin API has
-moved between minor releases since 4.1.
+Documentation and a live example: https://fxplugins.codecogs.com/docs/moodle.html
 
-### Testing locally
+## Requirements
 
-`/Users/will/Data/Vultr/moodle-dev` (outside this repo) holds a Moodle 4.5 checkout and
-moodlehq/moodle-docker, with this directory bind-mounted into the site
-(`moodle-docker/local.yml`): `source env.sh && moodle-docker/bin/moodle-docker-compose up -d`,
-then http://localhost:8000. After changing `amd/src`, rebuild with Moodle's own toolchain (Node
-22, in Docker) and commit `amd/build` with it:
+- Moodle 4.5 (LTS). The plugin is a subplugin of the TinyMCE editor (`editor_tiny`), which
+  Moodle has used since 4.1; it has been tested on Moodle 4.5 only.
+- **An fxTeX Pro licence key from CodeCogs**, and browsers that can reach CodeCogs' servers -
+  see *External services* below. Without a key the editor opens and image inserts still work,
+  but the maths view shows an fxTeX Pro error instead of the equation, and LaTeX is the only way
+  to write one.
+- No other plugins, and no Composer or build step: the package includes its compiled
+  JavaScript.
 
-```bash
-cd /Users/will/Data/Vultr/moodle-dev
-rsync -a --delete /Users/will/Data/Vultr/fxPlugins/moodle/tiny_eqneditor/ moodle/lib/editor/tiny/plugins/eqneditor/
-docker run --rm -v "$PWD/moodle:/moodle" -w /moodle node:22 npx grunt amd --root=lib/editor/tiny/plugins/eqneditor
-rsync -a moodle/lib/editor/tiny/plugins/eqneditor/amd/build/ /Users/will/Data/Vultr/fxPlugins/moodle/tiny_eqneditor/amd/build/
-```
+## External services
+
+This plugin is a front end to services run by CodeCogs (https://www.codecogs.com). It does not
+work without them.
+
+| Service | Default | What it does | What it receives |
+|---|---|---|---|
+| Equation editor host | `fxtex.codecogs.com` | Serves the equation editor itself (`fxeditor.api.min.js`, `fxeditor.css`, fonts) and fxTeX Pro, the typesetting engine that draws the maths view and converts equations to MathML. The author's browser loads them each time the editor opens. | The site's licence key, the address of the Moodle page (as the browser's referrer), and usage counts against the key. |
+| Rendering service | `https://latex.codecogs.com` | Draws equations inserted as **images**: each image's address carries its LaTeX, and every browser that displays the image fetches it from there. Not used for LaTeX or MathML inserts. | The equation's LaTeX and the site's origin (referrer). |
+
+**fxTeX Pro needs a licence key.** Keys are issued by CodeCogs: register at
+https://editor.codecogs.com, then create a key for your Moodle site's domain in the licence
+manager. A key only works on the domains it was issued for. It is not a secret - it is sent to
+every browser that opens the editor.
+
+The plugin stores no personal data in Moodle; its privacy provider declares the two external
+services above.
 
 ## Installing
 
-1. Copy this directory to `<moodle>/lib/editor/tiny/plugins/eqneditor`.
-2. Nothing to build: Moodle loads `amd/build/*.min.js`, which ships alongside `amd/src`. After
-   changing anything in `amd/src`, rebuild it (Moodle's Node toolchain, from the Moodle root) and
-   commit the result with the change - without `amd/build`, Moodle reports "No define call for
-   tiny_eqneditor/plugin" and every TinyMCE editor on the site fails to load:
-   ```
-   cd <moodle>
-   npx grunt amd --root=lib/editor/tiny/plugins/eqneditor
-   ```
-   `grunt amd` lints first (Moodle's eslint rules) and refuses to build on any error.
-3. Visit *Site administration &rarr; Notifications* to complete the install.
-4. *Site administration &rarr; Plugins &rarr; Text editors &rarr; TinyMCE editor &rarr; General*
-   - add **Equation** to the toolbar configuration.
-5. *Site administration &rarr; Plugins &rarr; Text editors &rarr; TinyMCE editor &rarr; CodeCogs
-   Equation Editor* - the settings this plugin's `settings.php` adds - to change the render
-   host or the dialog's default insert form.
+From the ZIP package, as for any plugin:
 
-## Structure
+1. *Site administration > Plugins > Install plugins*, upload the ZIP, and follow the prompts.
+   (Or unzip it so that this folder is `<moodle>/lib/editor/tiny/plugins/eqneditor`, then visit
+   *Site administration > Notifications*.)
+2. *Site administration > Plugins > Text editors > TinyMCE editor > CodeCogs Equation Editor*:
+   enter your **licence key**. This is the one step the plugin needs after installation.
 
-```
-version.php                    Plugin version/requires - standard for every Moodle plugin.
-settings.php                   Site admin settings (server, renderurl, insertas).
-classes/plugininfo.php         Registers the button/menu item, passes settings.php's values
-                                through to the AMD module for the current context.
-classes/privacy/provider.php   Privacy API: a null provider - the plugin stores no personal data.
-lang/en/tiny_eqneditor.php     English strings - button/menu text, dialog title, settings.
-pix/eqneditor.svg              The toolbar button icon (the same fx wordmark as the other
-                                fxPlugins adapters).
-amd/src/common.js              Shared constants.
-amd/src/options.js             Reads plugininfo.php's configuration back out of the editor.
-amd/src/commands.js            The toolbar button, menu item, and the dialog itself.
-amd/src/plugin.js              Entry point - registers with TinyMCE's PluginManager.
-amd/build/*.min.js(.map)       What Moodle actually loads - built from amd/src by `grunt amd`.
-```
+The **Equation** button then appears on the editor's toolbar and under *Insert > Equation...*.
 
-## Configuration
+## Settings
 
-Site-wide, under *Site administration &rarr; Plugins &rarr; Text editors &rarr; TinyMCE editor
-&rarr; CodeCogs Equation Editor* (`settings.php`) - there is currently no per-course or
-per-instance override:
+Site-wide, under *Site administration > Plugins > Text editors > TinyMCE editor > CodeCogs
+Equation Editor*:
 
 | Setting | Default | Meaning |
 |---|---|---|
-| Equation Editor host | `fxtex.codecogs.com` | Where the Equation Editor's own code is loaded from. Change this only if you run your own copy. |
-| Licence key | *(empty)* | Your fxTeX Pro licence key (`fx_pk_...`). Without one the maths view shows a licence error instead of rendering. |
+| Licence key | *(empty)* | Your fxTeX Pro licence key (`fx_pk_...`). Required. |
+| Design | *(empty)* | How the editor looks - toolbar, colour, sizes - as JSON. Build one at https://fxplugins.codecogs.com/docs/moodle.html. Empty for the standard design. |
+| Equation editor host | `fxtex.codecogs.com` | Where the equation editor is loaded from. Change it only if you run your own copy. |
 | Rendering service URL | `https://latex.codecogs.com` | The service that turns an equation into an image, used when *Insert as* is *Image*. |
-| Insert as | Image | The dialog's starting *Insert as* choice (authors can change it per equation): *Image* (an SVG `<img>`), *LaTeX* (`\( \)` when *Inline* is on, `$$ $$` otherwise, for Moodle's MathJax filter - so it only renders where that filter is enabled), or *MathML* (final markup, needs the stylesheet below). |
+| Insert as | Image | The dialog's starting *Insert as* choice, which authors can change for each equation (below). |
+
+## Choosing how equations are stored
+
+- **Image** (an SVG `<img>`) - displays anywhere, but the rendering service has to be reachable
+  whenever the content is viewed.
+- **LaTeX** - `\( \)` when *Inline* is on, `$$ $$` otherwise. Compact and editable by hand;
+  displayed by Moodle's MathJax filter, which must be enabled where the content is shown.
+- **MathML** - final markup with nothing to fetch. Pages that display it need fxTeX's
+  stylesheet, since browsers' own MathML does not cover everything the converter produces: add
+  `<link rel="stylesheet" href="https://fxtex.codecogs.com/fxtex.css">` under *Site
+  administration > Appearance > Additional HTML > Within HEAD*. The plugin loads it into the
+  editing view itself, but cannot reach every page that later shows the content.
 
 ## The dialog
 
-The same layout as every other adapter in this repo: the toolbar and maths view on top, then
-one bottom bar with the *Inline* and *LaTeX markup* toggles on the left and *Insert as*,
-*Cancel* and *OK* on the right. The maths view is always shown first; *LaTeX markup* swaps it
-for the LaTeX source for this dialog only.
+The toolbar and maths view on top; one bottom bar with the *Inline* and *LaTeX* switches on the
+left and *Insert as*, *Cancel* and *OK* on the right. *LaTeX* shows the LaTeX source above the
+maths view. The dialog remembers its layout choices (toolbar size, the switches, the panes'
+sizes) in the author's own browser only.
 
-### MathML needs a stylesheet on the page that displays it
+## Licence
 
-If *Insert as* is set to *MathML*, whatever theme or activity finally displays the content
-needs this line - the same file fxTeX ships - since browsers' own MathML does not cover
-everything the converter produces:
+This plugin is free software under the GNU GPL v3 or later - see `LICENSE`. It contains no
+third-party code: the equation editor and fxTeX Pro are not part of this package, and are
+loaded from the equation editor host at run time under CodeCogs' own terms.
 
-```html
-<link rel="stylesheet" href="https://fxtex.codecogs.com/fxtex.css">
+Copyright 2026 CodeCogs (https://www.codecogs.com).
+
+## For developers
+
+```
+version.php                    Plugin version and requirements.
+settings.php                   Site admin settings.
+classes/plugininfo.php         Registers the button and menu item, and passes the settings to
+                                the AMD module.
+classes/privacy/provider.php   Privacy API: no data kept in Moodle; the external services.
+lang/en/tiny_eqneditor.php     English strings.
+pix/eqneditor.svg              The toolbar button's icon.
+amd/src/plugin.js              Entry point - registers with TinyMCE's PluginManager.
+amd/src/configuration.js       Puts the button on the toolbar and in the Insert menu.
+amd/src/commands.js            The button, the menu item and the dialog itself.
+amd/src/options.js             Reads plugininfo.php's configuration back out of the editor.
+amd/src/common.js              Shared constants.
+amd/build/                     The compiled modules Moodle loads - rebuild after changing amd/src.
 ```
 
-The plugin loads it into the *editing* view for you; it cannot add it to every place Moodle
-might later display the content (a forum post, a page resource, a quiz question...), because
-that is a theme-level change, not something a Tiny plugin can reach.
+The dialog is the same code as `tinymce/v6/eqneditor.js` in the fxPlugins repository, adapted
+to Moodle's plugin API; keep the two in step by hand.
 
-## Known gaps
+Rebuilding `amd/build` needs Moodle's own Grunt set-up and Node 22, from a Moodle checkout with
+the plugin in place:
 
-- **No automated tests.** A real Tiny plugin submission to the Moodle plugins directory would
-  need a PHPUnit test for `plugininfo.php` and a Behat/Playwright test exercising the dialog;
-  neither exists yet.
-- **No per-course override.** Every editor on the site shares one configuration. If different
-  courses need different `insertas` settings, `get_plugin_configuration_for_context()` in
-  `classes/plugininfo.php` is where a per-context override would go.
-- **thirdpartylibs.xml is deliberately absent.** EqEditor's own code is loaded from
-  `fxtex.codecogs.com` at runtime, the same as every other adapter in this repo - nothing
-  third-party is bundled into this plugin's own codebase for that file to declare.
+```
+cd <moodle>
+npx grunt amd --root=lib/editor/tiny/plugins/eqneditor
+```
+
+(With a different Node on the machine: `docker run --rm -v "$PWD:/moodle" -w /moodle node:22 npx
+grunt amd --root=lib/editor/tiny/plugins/eqneditor`.)

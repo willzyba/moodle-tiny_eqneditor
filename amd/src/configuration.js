@@ -23,18 +23,20 @@
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import {buttonName, menuItemName} from './common';
+import {buttonName, component, menuItemName} from './common';
 import {addMenubarItem, addToolbarButton, addToolbarSection} from 'editor_tiny/utils';
 
 /**
- * Adds the button to the toolbar's advanced section, creating the section if need be.
+ * Adds the button to a toolbar section of its own, after the lists. Not Moodle's 'advanced'
+ * section: its own equation plugin creates that one without checking for it, and
+ * addToolbarButton() adds to every section of a name - so sharing it put Moodle's button in twice.
  *
  * @param {Array} toolbar The toolbar configuration
  * @returns {Array}
  */
 const configureToolbar = (toolbar) => {
-    addToolbarSection(toolbar, 'advanced', 'lists', true);
-    return addToolbarButton(toolbar, 'advanced', buttonName);
+    addToolbarSection(toolbar, component, 'lists', true);
+    return addToolbarButton(toolbar, component, buttonName);
 };
 
 /**
