@@ -66,10 +66,9 @@ The **Equation** button then appears on the editor's toolbar, and under *Insert 
 
 ## Licence key
 
-Equations are rendered by fxTeX Pro, which needs a licence key for your site's domain. **For
-Moodle sites the key is free.** Get a key for your Moodle site's domain from
-https://fxeditor.codecogs.com/purchase. There is nothing to pay, for the key or for anything the
-plugin does. A key only works on the domains it was issued for. It is not a secret -
+Equations are rendered by fxTeX Pro, which needs a licence key for your site's domain. Get one
+from https://fxeditor.codecogs.com/purchase: a 30-day trial key to try it, then a purchased key
+to keep using it. A key only works on the domains it was issued for. It is not a secret -
 it is sent to every browser that opens the editor.
 
 Without a key the editor opens and equations can still be written in LaTeX and inserted as
@@ -89,7 +88,7 @@ Site-wide, on the same page:
 
 | Setting | Default | Meaning |
 |---|---|---|
-| Licence key | *(empty)* | Your free fxTeX Pro licence key (`fx_pk_...`). Required. |
+| Licence key | *(empty)* | Your fxTeX Pro licence key (`fx_pk_...`) - a 30-day trial or a purchased key. Required. |
 | Design | *(empty)* | How the editor looks, as JSON: dialog width, height and scale, toolbar panels and size, colour, equation and markup sizes, undo/redo. Build one in [Customise and download](https://fxplugins.codecogs.com/docs/moodle.html#customise). Empty for the standard design. |
 | Equation editor host | `fxtex.codecogs.com` | Where the equation editor is loaded from. Change it only if you run your own copy. |
 | Rendering service URL | `https://latex.codecogs.com` | The service that turns an equation into an image, used when *Insert as* is *Image*. |
