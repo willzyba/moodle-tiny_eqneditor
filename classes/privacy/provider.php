@@ -55,6 +55,7 @@ class provider implements
         $collection->add_external_location_link('render', [
             'equation' => 'privacy:metadata:render:equation',
             'siteurl' => 'privacy:metadata:render:siteurl',
+            'usage' => 'privacy:metadata:render:usage',
         ], 'privacy:metadata:render');
 
         return $collection;
