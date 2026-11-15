@@ -41,7 +41,7 @@ const designName = getPluginOptionName(pluginName, 'design');
  */
 export const register = (editor) => {
     const registerOption = editor.options.register;
-    registerOption(serverName, {processor: 'string', "default": 'fxtex.codecogs.com'});
+    registerOption(serverName, {processor: 'string', "default": 'https://fxtex.codecogs.com'});
     registerOption(licenceName, {processor: 'string', "default": ''});
     registerOption(renderUrlName, {processor: 'string', "default": 'https://fxtex.codecogs.com'});
     registerOption(insertAsName, {processor: 'string', "default": 'url'});
@@ -54,7 +54,7 @@ export const register = (editor) => {
  * @param {object} editor The TinyMCE editor
  * @returns {string}
  */
-export const getServer = (editor) => editor.options.get(serverName) || 'fxtex.codecogs.com';
+export const getServer = (editor) => editor.options.get(serverName) || 'https://fxtex.codecogs.com';
 
 /**
  * The fxTeX Pro licence key.

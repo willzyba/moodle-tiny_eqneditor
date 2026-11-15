@@ -31,8 +31,8 @@ if ($ADMIN->fulltree) {
         'tiny_eqneditor/server',
         get_string('server', 'tiny_eqneditor'),
         get_string('server_desc', 'tiny_eqneditor'),
-        'fxtex.codecogs.com',
-        PARAM_HOST
+        'https://fxtex.codecogs.com',
+        PARAM_URL
     ));
 
     $settings->add(new admin_setting_configtext(

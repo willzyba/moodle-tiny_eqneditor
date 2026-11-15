@@ -92,7 +92,7 @@ class plugininfo extends plugin implements plugin_with_buttons, plugin_with_conf
         ?editor $editor = null
     ): array {
         return [
-            'server' => get_config('tiny_eqneditor', 'server') ?: 'fxtex.codecogs.com',
+            'server' => get_config('tiny_eqneditor', 'server') ?: 'https://fxtex.codecogs.com',
             'licence' => get_config('tiny_eqneditor', 'licence') ?: '',
             'renderurl' => get_config('tiny_eqneditor', 'renderurl') ?: 'https://fxtex.codecogs.com',
             'insertas' => get_config('tiny_eqneditor', 'insertas') ?: 'url',

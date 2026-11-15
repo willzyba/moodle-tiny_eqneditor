@@ -38,5 +38,14 @@ function xmldb_tiny_eqneditor_upgrade($oldversion) {
         }
         upgrade_plugin_savepoint(true, 2026111502, 'tiny', 'eqneditor');
     }
+
+    if ($oldversion < 2026111504) {
+        // The Equation editor URL is a full URL, like the Rendering service URL: the old default
+        // was the bare host fxtex.codecogs.com. Both work; this keeps the two settings alike.
+        if (get_config('tiny_eqneditor', 'server') === 'fxtex.codecogs.com') {
+            set_config('server', 'https://fxtex.codecogs.com', 'tiny_eqneditor');
+        }
+        upgrade_plugin_savepoint(true, 2026111504, 'tiny', 'eqneditor');
+    }
     return true;
 }
