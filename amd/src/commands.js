@@ -1242,7 +1242,7 @@ const setupEditor = (editor) => {
             return escapeHtml(inline ? `\\(${latex}\\)` : `$$${latex}$$`);
         }
         if (mode === 'svg') {
-            // The referrerpolicy is explicit: latex.codecogs.com identifies the calling site by
+            // The referrerpolicy is explicit: the rendering service identifies the calling site by
             // referer, and a stricter page policy would otherwise send none.
             const size = sizeImage(eqOutput, (mark, got) => {
                 const img = editor.dom.select(`img[data-cc-size="${mark}"]`)[0];

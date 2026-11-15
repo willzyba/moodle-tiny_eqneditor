@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'tiny_eqneditor';
-$plugin->version = 2026111501;
+$plugin->version = 2026111502;
 // Moodle 4.1 is the release that introduced the Tiny (TinyMCE 6) editor subsystem this
 // plugin is written against - see https://moodledev.io/docs/apis/plugintypes/editor_tiny.
 $plugin->requires = 2022112800;
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '1.2.4';
+$plugin->release = '1.2.5';

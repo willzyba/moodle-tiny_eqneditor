@@ -47,7 +47,7 @@ if ($ADMIN->fulltree) {
         'tiny_eqneditor/renderurl',
         get_string('renderurl', 'tiny_eqneditor'),
         get_string('renderurl_desc', 'tiny_eqneditor'),
-        'https://latex.codecogs.com',
+        'https://fxtex.codecogs.com',
         PARAM_URL
     ));
 

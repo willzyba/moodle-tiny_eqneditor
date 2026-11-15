@@ -43,7 +43,7 @@ export const register = (editor) => {
     const registerOption = editor.options.register;
     registerOption(serverName, {processor: 'string', "default": 'fxtex.codecogs.com'});
     registerOption(licenceName, {processor: 'string', "default": ''});
-    registerOption(renderUrlName, {processor: 'string', "default": 'https://latex.codecogs.com'});
+    registerOption(renderUrlName, {processor: 'string', "default": 'https://fxtex.codecogs.com'});
     registerOption(insertAsName, {processor: 'string', "default": 'url'});
     registerOption(designName, {processor: 'string', "default": ''});
 };
@@ -70,7 +70,7 @@ export const getLicence = (editor) => editor.options.get(licenceName) || '';
  * @param {object} editor The TinyMCE editor
  * @returns {string}
  */
-export const getRenderUrl = (editor) => editor.options.get(renderUrlName) || 'https://latex.codecogs.com';
+export const getRenderUrl = (editor) => editor.options.get(renderUrlName) || 'https://fxtex.codecogs.com';
 
 /**
  * The editor's design, from the JSON setting - none at all when it does not parse.
