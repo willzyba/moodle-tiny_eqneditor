@@ -13,7 +13,7 @@ Documentation and a live example: https://fxplugins.codecogs.com/docs/moodle.htm
 
 - Moodle 4.5 (LTS). The plugin is a subplugin of the TinyMCE editor (`editor_tiny`), which
   Moodle has used since 4.1; it has been tested on Moodle 4.5 only.
-- **An fxTeX Pro licence key from CodeCogs**, and browsers that can reach CodeCogs' servers -
+- **A free fxTeX Pro licence key from CodeCogs**, and browsers that can reach CodeCogs' servers -
   see *External services* below. Without a key the editor opens and image inserts still work,
   but the maths view shows an fxTeX Pro error instead of the equation, and LaTeX is the only way
   to write one.
@@ -30,10 +30,10 @@ work without them.
 | Equation editor host | `fxtex.codecogs.com` | Serves the equation editor itself (`fxeditor.api.min.js`, `fxeditor.css`, fonts) and fxTeX Pro, the typesetting engine that draws the maths view and converts equations to MathML. The author's browser loads them each time the editor opens. | The site's licence key, the address of the Moodle page (as the browser's referrer), and usage counts against the key. |
 | Rendering service | `https://latex.codecogs.com` | Draws equations inserted as **images**: each image's address carries its LaTeX, and every browser that displays the image fetches it from there. Not used for LaTeX or MathML inserts. | The equation's LaTeX and the site's origin (referrer). |
 
-**fxTeX Pro needs a licence key.** Keys are issued by CodeCogs: register at
-https://editor.codecogs.com, then create a key for your Moodle site's domain in the licence
-manager. A key only works on the domains it was issued for. It is not a secret - it is sent to
-every browser that opens the editor.
+**fxTeX Pro needs a licence key, which is free.** Register at https://editor.codecogs.com,
+then create a key for your Moodle site's domain in the licence manager. There is nothing to pay,
+for the key or for anything the plugin does. A key only works on the domains it was issued for.
+It is not a secret - it is sent to every browser that opens the editor.
 
 The plugin stores no personal data in Moodle; its privacy provider declares the two external
 services above.
@@ -57,7 +57,7 @@ Equation Editor*:
 
 | Setting | Default | Meaning |
 |---|---|---|
-| Licence key | *(empty)* | Your fxTeX Pro licence key (`fx_pk_...`). Required. |
+| Licence key | *(empty)* | Your free fxTeX Pro licence key (`fx_pk_...`). Required. |
 | Design | *(empty)* | How the editor looks - toolbar, colour, sizes - as JSON. Build one at https://fxplugins.codecogs.com/docs/moodle.html. Empty for the standard design. |
 | Equation editor host | `fxtex.codecogs.com` | Where the equation editor is loaded from. Change it only if you run your own copy. |
 | Rendering service URL | `https://latex.codecogs.com` | The service that turns an equation into an image, used when *Insert as* is *Image*. |
