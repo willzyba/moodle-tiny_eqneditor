@@ -82,7 +82,7 @@ Equation Editor > Licence key*:
 
 ![The plugin's settings page in Moodle's site administration](https://raw.githubusercontent.com/willzyba/moodle-tiny_eqneditor/main/screenshots/settings.png)
 
-*The plugin's settings page, with the Licence key field.*
+*The plugin's settings page: the Equation editor URL and the Rendering service URL, both `https://fxtex.codecogs.com`, and the Licence key field.*
 
 ### Settings
 
