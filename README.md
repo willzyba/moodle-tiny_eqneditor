@@ -98,7 +98,7 @@ Site-wide, on the same page:
 
 ### Choosing how equations are stored
 
-- **Image** (an SVG `<img>`) - displays anywhere, but the rendering service has to be reachable
+- **Image** (an SVG `<img>`) - displays anywhere, but fxtex.codecogs.com has to be reachable
   whenever the content is viewed.
 - **LaTeX** - `\( \)` when *Inline* is on, `$$ $$` otherwise. Compact and editable by hand;
   displayed by Moodle's MathJax filter, which must be enabled where the content is shown.
@@ -120,16 +120,18 @@ loaded from the equation editor host at run time under CodeCogs' own terms.
 
 ## External services
 
-This plugin is a front end to services run by CodeCogs (https://www.codecogs.com). It does not
-work without them.
+This plugin is a front end to one service run by CodeCogs, **fxtex.codecogs.com**, and does not
+work without it.
 
-| Service | Default | What it does | What it receives |
-|---|---|---|---|
-| Equation editor host | `fxtex.codecogs.com` | Serves the equation editor itself (`fxeditor.api.min.js`, `fxeditor.css`, fonts) and fxTeX Pro, the typesetting engine that draws the maths view and converts equations to MathML. The author's browser loads them each time the editor opens. | The site's licence key, the address of the Moodle page (as the browser's referrer), and, each time the editor opens, a validation of the key - the only use recorded. |
-| Rendering service | `https://fxtex.codecogs.com` | Draws equations inserted as **images**: each image's address carries its LaTeX, and every browser that displays the image fetches it from there. Not used for LaTeX or MathML inserts. | The equation's LaTeX and the site's origin (referrer). CodeCogs' fxTeX Server records each image it draws as use against the site's licence. |
+| What fxtex.codecogs.com does | What it receives |
+|---|---|
+| Serves the equation editor itself (`fxeditor.api.min.js`, `fxeditor.css`, fonts) and fxTeX Pro, the typesetting engine that draws the maths view and converts equations to MathML - the author's browser loads them each time the editor opens. And draws the equations inserted as **images**: each image's address carries its LaTeX, and every browser that displays the image fetches it from there (LaTeX and MathML inserts do not use this). | The site's licence key; the address of the Moodle page (as the browser's referrer); the LaTeX of each equation inserted as an image. Each opening of the editor, and each image drawn, is recorded as use against the site's licence. |
 
-The plugin stores no personal data in Moodle; its privacy provider declares the two external
-services above.
+The *Equation editor host* and *Rendering service URL* settings both point at it; they are separate
+only so a site running its own fxTeX Server can point them there.
+
+The plugin stores no personal data in Moodle; its privacy provider declares fxtex.codecogs.com
+as its one external service.
 
 ## The dialog
 
@@ -145,7 +147,7 @@ version.php                    Plugin version and requirements.
 settings.php                   Site admin settings.
 classes/plugininfo.php         Registers the button and menu item, and passes the settings to
                                 the AMD module.
-classes/privacy/provider.php   Privacy API: no data kept in Moodle; the external services.
+classes/privacy/provider.php   Privacy API: no data kept in Moodle; fxtex.codecogs.com, its one external service.
 lang/en/tiny_eqneditor.php     English strings.
 pix/eqneditor.svg              The toolbar button's icon.
 amd/src/plugin.js              Entry point - registers with TinyMCE's PluginManager.

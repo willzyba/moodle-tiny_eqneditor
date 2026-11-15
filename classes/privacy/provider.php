@@ -46,17 +46,14 @@ class provider implements
      * @return collection
      */
     public static function get_metadata(collection $collection): collection {
+        // One service, fxtex.codecogs.com: it serves the editor and fxTeX Pro and draws the
+        // equations inserted as images.
         $collection->add_external_location_link('fxtex', [
             'licence' => 'privacy:metadata:fxtex:licence',
             'pageurl' => 'privacy:metadata:fxtex:pageurl',
+            'equation' => 'privacy:metadata:fxtex:equation',
             'usage' => 'privacy:metadata:fxtex:usage',
         ], 'privacy:metadata:fxtex');
-
-        $collection->add_external_location_link('render', [
-            'equation' => 'privacy:metadata:render:equation',
-            'siteurl' => 'privacy:metadata:render:siteurl',
-            'usage' => 'privacy:metadata:render:usage',
-        ], 'privacy:metadata:render');
 
         return $collection;
     }
