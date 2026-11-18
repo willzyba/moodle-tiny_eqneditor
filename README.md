@@ -104,9 +104,11 @@ Site-wide, on the same page:
   displayed by Moodle's MathJax filter, which must be enabled where the content is shown.
 - **MathML** - final markup with nothing to fetch. Pages that display it need fxTeX's
   stylesheet, since browsers' own MathML does not cover everything the converter produces: add
-  `<link rel="stylesheet" href="https://fxtex.codecogs.com/fxtex.css">` under *Site
-  administration > Appearance > Additional HTML > Within HEAD*. The plugin loads it into the
-  editing view itself, but cannot reach every page that later shows the content.
+  `<link id="fxtex-style" rel="stylesheet" href="https://fxtex.codecogs.com/fxtex.css">` under
+  *Site administration > Appearance > Additional HTML > Within HEAD*. That also reaches pages
+  with the editor on them, and the `id` is the one fxTeX Pro looks for, so those pages are not
+  given a second copy. The plugin loads it into the editing area's iframe itself, but cannot
+  reach every page that later shows the content.
 
 ## Licence
 

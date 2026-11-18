@@ -1143,7 +1143,12 @@ const setupEditor = (editor) => {
 
     const apiReady = loadEqEditorApi(scriptUrl);
     loadCssOnce(cssUrl);
-    loadCssOnce(`${origin}/fxtex.css`);
+    // fxtex.css styles inserted MathML. The dialog lives on the outer page, where fxTeX Pro
+    // (loaded by EqEditor.init() when the dialog first opens) adds the same rules itself as
+    // <style id="fxtex-style">, so that page is not given a second copy. The MathML is shown in
+    // the content iframe, a separate document that stylesheet never reaches: this goes there.
+    // contentCSS is read when the iframe is built, after plugins have run.
+    editor.contentCSS.push(`${origin}/fxtex.css`);
 
     let eqOutput = null;
     let eqTextArea = null;
