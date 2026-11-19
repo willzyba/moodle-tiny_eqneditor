@@ -1337,6 +1337,13 @@ const setupEditor = (editor) => {
         editor.schema.addValidElements(MATHML_ELEMENTS.map((name) => `${name}[*]`).join(','));
         editor.schema.addValidElements('span[class|role|aria-label|aria-hidden]');
 
+        // TinyMCE does not count <math> as content, so a paragraph holding nothing but an
+        // equation - which is how a display equation is inserted - was judged empty and cleared
+        // when the content was serialised: the editor still showed the equation, but the saved
+        // text had an empty paragraph in its place.
+        const nonEmpty = editor.schema.getNonEmptyElements();
+        nonEmpty.math = nonEmpty.MATH = {};
+
         // Calling addValidElements('img[referrerpolicy]') would *replace* img's existing rule and drop
         // src/alt/width/height, so the one attribute is added to the existing rule directly.
         const imgRule = editor.schema.getElementRule('img');
