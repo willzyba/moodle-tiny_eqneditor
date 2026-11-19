@@ -244,7 +244,9 @@ const applyDesign = (root, design, latexToggle, insertSelect) => {
             box.style.setProperty('max-width', 'calc(96vw / ' + size + ')', 'important');
         }
     }
-    if (insertSelect && design.insertAs && insertSelect.querySelector('option[value="' + design.insertAs + '"]')) {
+    // The design's choice, unless the author has made their own (addEditorControls()).
+    if (insertSelect && design.insertAs && !insertSelect.hasAttribute('data-cc-remembered') &&
+            insertSelect.querySelector('option[value="' + design.insertAs + '"]')) {
         insertSelect.value = design.insertAs;
     }
     if (latexToggle && design.latex && !latexToggle.checked && !latexToggle.disabled) {
@@ -425,6 +427,19 @@ function addEditorControls(root, design, parts) {
         }
         latex.addEventListener('change', function() {
             prefs.latex = latex.checked;
+            save();
+        });
+    }
+
+    // Insert as: the author's last choice, over the site's setting and the design's.
+    const insertAs = parts.insertSelect;
+    if (insertAs) {
+        if (prefs.insertAs && insertAs.querySelector('option[value="' + prefs.insertAs + '"]')) {
+            insertAs.value = prefs.insertAs;
+            insertAs.setAttribute('data-cc-remembered', '');
+        }
+        insertAs.addEventListener('change', function() {
+            prefs.insertAs = insertAs.value;
             save();
         });
     }
@@ -1235,6 +1250,7 @@ const setupEditor = (editor) => {
             output: eqOutput,
             latexToggle: document.getElementById(ids.toggleLatex),
             inlineToggle: document.getElementById(ids.toggleInline),
+            insertSelect: document.getElementById(ids.insertMode),
         });
         applyDesign(root, design, latexToggle, document.getElementById(ids.insertMode));
     };
@@ -1262,11 +1278,56 @@ const setupEditor = (editor) => {
             const src = escapeHtml(outputCode(eqOutput, 'url'));
             return `<img class="fxtex" src="${src}" alt="${escapeHtml(latex)}" referrerpolicy="origin"${size}>`;
         }
-        return outputCode(eqOutput, 'mathml');
+        return bareMath(outputCode(eqOutput, 'mathml'));
     };
 
-    // `el`, when editing: the equation on the page, whose size the dialog starts from.
-    const showDialog = async(latex = '', el = null) => {
+    // The whole equation an element on the page belongs to: for MathML, Moodle's own non-editable
+    // tiny-math-block or tiny-math-span round the <math> (see bareMath()), and the span with the spoken
+    // text that earlier versions of this plugin put round that.
+    const equationOf = (el) => {
+        let node = el;
+        if (!node || node.nodeName.toLowerCase() !== 'math') {
+            return node;
+        }
+        if (node.parentNode && /^tiny-math-(span|block)$/i.test(node.parentNode.nodeName)) {
+            node = node.parentNode;
+        }
+        const wrapper = node.parentNode;
+        if (wrapper && wrapper.nodeName.toLowerCase() === 'span' && editor.dom.hasClass(wrapper, 'cc-math')) {
+            node = wrapper;
+        }
+        return node;
+    };
+
+    // Puts the equation in at the caret, or in place of `el`, the equation being edited - all of it,
+    // as one undo step. Left to the caret, an edited MathML equation went inside the old <math>,
+    // where the double-click had put it, and TinyMCE dropped it, so the edit was lost; selecting the
+    // old equation instead is no help, as the insert narrows a selection to the text inside it. So
+    // the old one is taken out first, and the new one goes where it was.
+    const insertEquation = (html, el) => {
+        const target = equationOf(el);
+        if (!target || !editor.getBody().contains(target)) {
+            editor.execCommand('mceInsertContent', false, html);
+            return;
+        }
+        // Focused first: taking focus back from the dialog restores the caret TinyMCE saved.
+        editor.focus();
+        editor.undoManager.transact(() => {
+            const parent = target.parentNode;
+            const index = editor.dom.nodeIndex(target);
+            editor.dom.remove(target);
+            const rng = editor.dom.createRng();
+            rng.setStart(parent, index);
+            rng.collapse(true);
+            editor.selection.setRng(rng);
+            editor.execCommand('mceInsertContent', false, html);
+        });
+    };
+
+    // `el`, when editing: the equation on the page, whose size the dialog starts from and which OK
+    // replaces. `format` ('svg' or 'mathml'): what it was inserted as, which the dialog starts with,
+    // so an edited equation goes back in the form it came out of.
+    const showDialog = async(latex = '', el = null, format = '') => {
         const dialogTitle = await getString('dialogtitle', component);
         let startSize = 1;
 
@@ -1297,7 +1358,7 @@ const setupEditor = (editor) => {
                     const scale = sizeSelect ? Number(sizeSelect.value) / 100 : startSize;
                     (eqOutput.setScale || eqOutput.setEquationSize).call(eqOutput, scale);
                 }
-                editor.execCommand('mceInsertContent', false, buildInsert(current));
+                insertEquation(buildInsert(current), el);
                 eqTextArea.pushToHistory();
             }
             dialog.close();
@@ -1308,6 +1369,10 @@ const setupEditor = (editor) => {
         apiReady.then(() => ensureInit(getLicence(editor))).then(() => {
             injectStyleOverridesOnce(cssUrl.slice(0, cssUrl.lastIndexOf('/') + 1) + 'prototypes/latinmodern-math.otf');
             mount();
+            const insertMode = document.getElementById(ids.insertMode);
+            if (format && insertMode.querySelector('option[value="' + format + '"]')) {
+                insertMode.value = format;
+            }
             startSize = sizeOf(el);
             showSize(document.getElementById(ids.size), startSize);
             eqTextArea.clear();
@@ -1364,7 +1429,7 @@ const setupEditor = (editor) => {
         if (target.nodeName.toLowerCase() === 'img') {
             const match = target.src.match(/(gif|svg|png)\.image\?(.*)/);
             if (match) {
-                showDialog(decodeEquation(match[2]), target);
+                showDialog(decodeEquation(match[2]), target, 'svg');
             }
             return;
         }
@@ -1373,12 +1438,42 @@ const setupEditor = (editor) => {
         if (math) {
             const mathLatex = math.getAttribute('title').trim();
             if (mathLatex) {
-                showDialog(mathLatex, math);
+                showDialog(mathLatex, math, 'mathml');
             }
         }
     });
 
     return showDialog;
+};
+
+/**
+ * MathML as Moodle's editor keeps it. The converter puts the <math> in a span that carries the
+ * spoken text, but Moodle's own MathML support (editor_tiny/content.js, in Moodle 4.5 and later)
+ * makes <math> a block of its own - kept in a non-editable tiny-math-block, or a tiny-math-span when
+ * its style says display: inline - and strips one found inside a span, so the equation was lost. So
+ * the <math> goes in alone, with the spoken text on it, and an inline equation styled inline.
+ *
+ * @param {string} html The MathML, as the converter writes it
+ * @returns {string}
+ */
+const bareMath = (html) => {
+    const box = document.createElement('div');
+    box.innerHTML = html;
+    const math = box.querySelector('math');
+    if (!math) {
+        return html;
+    }
+    const wrapper = math.parentElement !== box ? math.parentElement : null;
+    const label = wrapper && wrapper.getAttribute('aria-label');
+    if (label) {
+        math.setAttribute('aria-label', label);
+    }
+    math.removeAttribute('aria-hidden');
+    if (math.getAttribute('display') !== 'block') {
+        const style = (math.getAttribute('style') || '').replace(/;?\s*$/, '');
+        math.setAttribute('style', (style ? style + '; ' : '') + 'display: inline');
+    }
+    return math.outerHTML;
 };
 
 /**

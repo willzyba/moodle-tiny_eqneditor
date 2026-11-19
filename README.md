@@ -94,7 +94,7 @@ Site-wide, on the same page:
 | Design | *(empty)* | How the editor looks, as JSON: dialog width, height and scale, toolbar panels and size, colour, equation and markup sizes, undo/redo. Build one in [Customise and download](https://fxplugins.codecogs.com/docs/moodle.html#customise). Empty for the standard design. |
 | Equation editor URL | `https://fxtex.codecogs.com` | Where the equation editor is loaded from. Change it only if you run your own copy. |
 | Rendering service URL | `https://fxtex.codecogs.com` | The service that turns an equation into an image, used when *Insert as* is *Image*. |
-| Insert as | Image | The dialog's starting *Insert as* choice - Image, LaTeX or MathML - which authors can change for each equation. |
+| Insert as | Image | The dialog's starting *Insert as* choice - Image, LaTeX or MathML. Authors can change it for each equation, and the dialog then remembers their choice in that browser. |
 
 ### Choosing how equations are stored
 
