@@ -6,8 +6,9 @@ The fxEditor plugin for Moodle adds an **Equation** button to Moodle's TinyMCE e
 teachers and students can write mathematics anywhere Moodle has a text editor - a quiz question,
 a forum post, a page, an assignment. The button opens fxEditor, CodeCogs' equation editor: a
 toolbar of symbols and structures, a what-you-see-is-what-you-get maths view, and the LaTeX
-source beside it. The equation goes into the content as an image, as LaTeX for Moodle's MathJax
-filter, or as MathML, and a double-click on an inserted equation opens it again for editing.
+source beside it. The equation goes into the content as an image, as LaTeX for a maths filter
+(the [fxTeX maths filter](https://fxplugins.codecogs.com/docs/moodle.html#filter), or MathJax), or as
+MathML, and a double-click on an inserted equation opens it again for editing.
 
 In Moodle the plugin is called **CodeCogs Equation Editor**; its component is `tiny_eqneditor`,
 and it installs to `lib/editor/tiny/plugins/eqneditor`. It needs Moodle 4.1 or later (the
@@ -100,11 +101,14 @@ Site-wide, on the same page:
 
 - **Image** (an SVG `<img>`) - displays anywhere, but fxtex.codecogs.com has to be reachable
   whenever the content is viewed.
-- **LaTeX** - `\( \)` when *Inline* is on, `$$ $$` otherwise. Compact and editable by hand;
-  displayed by Moodle's MathJax filter, which must be enabled where the content is shown.
+- **LaTeX** - `\( \)` when *Inline* is on, `$$ $$` otherwise. Compact and editable by hand,
+  but it needs a maths filter where the content is shown: the
+  [fxTeX maths filter](https://github.com/willzyba/moodle-filter_fxtex), the only one that also
+  draws chemical structures and pictures, or Moodle's MathJax filter.
 - **MathML** - final markup with nothing to fetch. Pages that display it need fxTeX's
   stylesheet, since browsers' own MathML does not cover everything the converter produces: add
-  `<link id="fxtex-style" rel="stylesheet" href="https://fxtex.codecogs.com/fxtex.css">` under
+  `<link id="fxtex-style" rel="stylesheet" href="https://fxtex.codecogs.com/fxtex.css">` (or turn on
+  the fxTeX maths filter, which brings it) under
   *Site administration > Appearance > Additional HTML > Within HEAD*. That also reaches pages
   with the editor on them, and the `id` is the one fxTeX Pro looks for, so those pages are not
   given a second copy. The plugin loads it into the editing area's iframe itself, but cannot
