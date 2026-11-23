@@ -104,7 +104,9 @@ Site-wide, on the same page:
 - **LaTeX** - `\( \)` when *Inline* is on, `$$ $$` otherwise. Compact and editable by hand,
   but it needs a maths filter where the content is shown: the
   [fxTeX maths filter](https://github.com/willzyba/moodle-filter_fxtex), the only one that also
-  draws chemical structures and pictures, or Moodle's MathJax filter.
+  draws chemical structures and pictures, or Moodle's MathJax filter. In the editor it shows as the maths it
+  is, and is saved as the LaTeX, character for character (`latexAsMaths: false` in the design turns
+  this off).
 - **MathML** - final markup with nothing to fetch. Pages that display it need fxTeX's
   stylesheet, since browsers' own MathML does not cover everything the converter produces: add
   `<link id="fxtex-style" rel="stylesheet" href="https://fxtex.codecogs.com/fxtex.css">` (or turn on

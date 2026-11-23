@@ -543,6 +543,191 @@ const startInline = (toggle, inline, apply) => {
     }
 };
 
+/**
+ * A piece of text as runs of plain text and LaTeX equations, read as texAround() reads them. Each
+ * run's text is exactly as it is in the piece, delimiters and all, so joining the runs gives the piece
+ * back unchanged.
+ *
+ * @param {string} text The text.
+ * @returns {object[]} [{text}, {text, tex: {latex, display}}, ...].
+ */
+const texPieces = (text) => {
+    const opening = (at) => TEX_DELIMITERS.find(([left]) => text.startsWith(left, at));
+    const pieces = [];
+    let i = 0;
+    let from = 0;
+    while (i < text.length) {
+        const delimiter = opening(i);
+        if (!delimiter) {
+            i += text.charAt(i) === '\\' ? 2 : 1;
+            continue;
+        }
+        const [left, right, display] = delimiter;
+        let j = i + left.length;
+        while (j < text.length && !text.startsWith(right, j)) {
+            j += text.charAt(j) === '\\' && !right.startsWith('\\') ? 2 : 1;
+        }
+        if (j >= text.length) {
+            break;
+        }
+        const end = j + right.length;
+        const latex = text.slice(i + left.length, j).trim();
+        if (latex) {
+            if (i > from) {
+                pieces.push({text: text.slice(from, i)});
+            }
+            pieces.push({text: text.slice(i, end), tex: {latex, display}});
+            from = end;
+        }
+        i = end;
+    }
+    if (from < text.length) {
+        pieces.push({text: text.slice(from)});
+    }
+    return pieces;
+};
+
+/**
+ * The LaTeX equation that is the whole of `source`, delimiters and all, or null.
+ *
+ * @param {string} source The text.
+ * @returns {object|null} {latex, display}.
+ */
+const texOfSource = (source) => {
+    const pieces = texPieces(source || '');
+    return pieces.length === 1 && pieces[0].tex ? pieces[0].tex : null;
+};
+
+// Never read as maths: code, and anything that is maths already.
+const TEX_SKIP = ['code', 'pre', 'script', 'style', 'textarea', 'math', 'svg'];
+const TEX_CSS = '.cc-tex { cursor: default; } .cc-tex-display { display: block; text-align: center; margin: 0.5em 0; }' +
+    ' .cc-tex-math + .cc-tex-src { display: none; }';
+
+/**
+ * LaTeX in the text - \( \), \[ \], $$ $$ and $ $, as Moodle's maths filters read it on the page that
+ * shows the content - shown as the maths it is while it is edited (the design's latexAsMaths, on
+ * unless set false). What is saved is the LaTeX, exactly as it was.
+ *
+ * As content comes in (the parser), each equation in the text becomes a locked span holding its text;
+ * its maths is drawn into it as a data-mce-bogus="all" element, which TinyMCE leaves out of saved
+ * content and undo history alike, and the text is hidden beside it. As content goes out (the
+ * serializer), each span is its data-cc-tex text again. Double-click one to edit it.
+ *
+ * @param {object} editor The TinyMCE editor.
+ * @param {Function} whenReady Resolves once fxTeX Pro is ready.
+ * @returns {Function} Draws the maths of any equation that has none yet.
+ */
+const texAsMaths = (editor, whenReady) => {
+    const AstNode = window.tinymce.html.Node;
+    const textNode = (value) => {
+        const node = new AstNode('#text', 3);
+        node.value = value;
+        return node;
+    };
+    const skipped = (node) => {
+        for (let p = node.parent; p; p = p.parent) {
+            if (TEX_SKIP.includes(p.name) || (typeof p.attr === 'function' && p.attr('data-cc-tex') !== undefined &&
+                    p.attr('data-cc-tex') !== null)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const texSpan = (piece) => {
+        const span = new AstNode('span', 1);
+        span.attr('class', piece.tex.display ? 'cc-tex cc-tex-display' : 'cc-tex');
+        span.attr('data-cc-tex', piece.text);
+        span.attr('contenteditable', 'false');
+        const source = new AstNode('span', 1);
+        source.attr('class', 'cc-tex-src');
+        source.append(textNode(piece.text));
+        span.append(source);
+        return span;
+    };
+
+    editor.on('PreInit', () => {
+        // data-cc-tex has to survive the schema for the serializer to find it again.
+        const spanRule = editor.schema.getElementRule('span');
+        if (spanRule && spanRule.attributes) {
+            ['data-cc-tex', 'contenteditable', 'class'].forEach((name) => {
+                if (!spanRule.attributes[name]) {
+                    spanRule.attributes[name] = {};
+                    if (spanRule.attributesOrder) {
+                        spanRule.attributesOrder.push(name);
+                    }
+                }
+            });
+        }
+
+        editor.parser.addNodeFilter('#text', (nodes) => {
+            nodes.forEach((node) => {
+                if (!node.parent || !node.value || !/[$\\]/.test(node.value) || skipped(node)) {
+                    return;
+                }
+                const pieces = texPieces(node.value);
+                if (!pieces.some((piece) => piece.tex)) {
+                    return;
+                }
+                pieces.forEach((piece) => {
+                    node.parent.insert(piece.tex ? texSpan(piece) : textNode(piece.text), node, true);
+                });
+                node.remove();
+            });
+        });
+
+        editor.serializer.addAttributeFilter('data-cc-tex', (nodes) => {
+            nodes.forEach((node) => {
+                const value = node.attr('data-cc-tex');
+                if (value) {
+                    node.replace(textNode(value));
+                }
+            });
+        });
+    });
+
+    const draw = () => {
+        if (!editor.getBody()) {
+            return;
+        }
+        const spans = editor.dom.select('span.cc-tex[data-cc-tex]').filter((span) => !span.querySelector('.cc-tex-math'));
+        if (!spans.length) {
+            return;
+        }
+        whenReady().then(() => {
+            spans.forEach((span) => {
+                if (!editor.getBody().contains(span) || span.querySelector('.cc-tex-math')) {
+                    return;
+                }
+                const tex = texOfSource(span.getAttribute('data-cc-tex'));
+                let mathml = '';
+                try {
+                    mathml = tex ? window.EqEditor.Output.latexToMathML(tex.latex, true, !tex.display) : '';
+                } catch (e) {
+                    mathml = '';
+                }
+                // Without fxTeX Pro (no licence), its error: the LaTeX stays as it is.
+                if (!mathml || mathml.indexOf('<merror') !== -1) {
+                    return;
+                }
+                const math = editor.getDoc().createElement('span');
+                math.className = 'cc-tex-math';
+                math.setAttribute('data-mce-bogus', 'all');
+                math.innerHTML = mathml;
+                span.insertBefore(math, span.firstChild);
+            });
+            return;
+        }).catch(() => {
+            // fxTeX Pro could not be loaded: the LaTeX stays as it is.
+        });
+    };
+    editor.on('init', () => {
+        editor.dom.addStyle(TEX_CSS);
+        draw();
+    });
+    editor.on('SetContent Undo Redo', () => setTimeout(draw, 0));
+    return draw;
+};
+
 const escapeHtml = (s) => String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -1417,6 +1602,9 @@ const setupEditor = (editor) => {
     const cssUrl = `${origin}/fxeditor.css`;
 
     const apiReady = loadEqEditorApi(scriptUrl);
+    if (design.latexAsMaths !== false) {
+        texAsMaths(editor, () => apiReady.then(() => ensureInit(getLicence(editor))));
+    }
     loadCssOnce(cssUrl);
     // fxtex.css styles inserted MathML. The dialog lives on the outer page, where fxTeX Pro
     // (loaded by EqEditor.init() when the dialog first opens) adds the same rules itself as
@@ -1698,6 +1886,16 @@ const setupEditor = (editor) => {
     editor.on('dblclick', (e) => {
         const target = e.target;
         if (!target) {
+            return;
+        }
+
+        // LaTeX shown as maths: its own text says what it is.
+        const texSpan = target.closest && target.closest('span.cc-tex[data-cc-tex]');
+        if (texSpan) {
+            const texFound = texOfSource(texSpan.getAttribute('data-cc-tex'));
+            if (texFound) {
+                showDialog(texFound.latex, texSpan, 'latex', !texFound.display);
+            }
             return;
         }
 
