@@ -37,7 +37,7 @@ import {getServer, getLicence, getRenderUrl, getInsertAs, getDesign} from './opt
 // The dialog's text, from lang/en/tiny_eqneditor.php - fetched once in getSetup(), before any
 // dialog can open, so the code that builds the dialog can use it as it stands.
 const STRING_KEYS = [
-    'cancel', 'inline', 'inline_title', 'insertas_menu', 'insert_latex', 'insert_mathml', 'insert_svg',
+    'cancel', 'inline', 'inline_title', 'insertas_menu', 'insert_latex', 'insert_mathml', 'insert_png', 'insert_svg',
     'latex', 'latex_placeholder', 'latex_title', 'latexresize', 'latexresize_title', 'loaderror', 'ok',
     'predictor', 'predictor_title', 'predictorhide', 'predictorpanel', 'predictorresize', 'size', 'size_title',
     'toolbarsize', 'toolbarsize_title',
@@ -99,9 +99,9 @@ const ensureInit = (licence) => {
 // author. The toolbar's rows and scale go to Toolbar.link() itself; everything else is applied
 // here, once the editor is mounted - CSS scoped to this editor's root, then the starting state of
 // the LaTeX toggle and the "Insert as" menu.
-// The dialog's size when the design does not set one: about 700 by 450 pixels.
+// The dialog's size when the design does not set one: about 700 by 500 pixels.
 const DEFAULT_WIDTH = 700;
-const DEFAULT_HEIGHT = 450;
+const DEFAULT_HEIGHT = 500;
 const designWidth = (design) => (Number(design && design.width) > 0 ? Number(design.width) : DEFAULT_WIDTH);
 const designHeight = (design) => (Number(design && design.height) > 0 ? Number(design.height) : DEFAULT_HEIGHT);
 // Gives an inserted image its size in em once the API has read it (Output.imageSize()): set on
@@ -490,7 +490,9 @@ const lockEquations = (editor) => {
  */
 const splitInline = (latex) => {
     const found = /^\s*\\inline\b\s*/.exec(latex);
-    return {latex: found ? latex.slice(found[0].length) : latex, inline: !!found};
+    const rest = found ? latex.slice(found[0].length) : latex;
+    // A PNG's resolution (see outputCode()), which is not part of the equation.
+    return {latex: rest.replace(/^\s*\\dpi\{\d+\}\s*/, ''), inline: !!found};
 };
 
 /**
@@ -711,22 +713,32 @@ const escapeHtml = (s) => String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+// A PNG is drawn at PNG_DPI for a normal size (96 dpi is the SVG's own size), so it stays sharp once it
+// is given the SVG's size - see outputCode().
+const PNG_DPI = 192;
+
 /**
- * The equation as an image URL ('url') or as MathML ('mathml'). fxeditor-api replaced
- * Output.exportAs() with getEquationURL() and setFormat()/setWrapper()/getCode() (its 9630657);
- * exportAs() still serves an API from before that. The format is set each time: the same Output
- * gives both.
+ * The equation as an image URL - SVG ('url') or PNG ('png') - or as MathML ('mathml'). fxeditor-api
+ * replaced Output.exportAs() with getEquationURL() and setFormat()/setWrapper()/getCode() (its
+ * 9630657); exportAs() still serves an API from before that. The format is set each time: the same
+ * Output gives all three. The Output is left at SVG, which Output.imageSize() reads.
  *
  * @param {object} output The editor's EqEditor.Output.
- * @param {string} kind 'url' or 'mathml'.
+ * @param {string} kind 'url', 'png' or 'mathml'.
  * @returns {string} The image URL, or the MathML markup.
  */
 function outputCode(output, kind) {
-    if (typeof output.exportAs === 'function') {
+    if (typeof output.exportAs === 'function' && kind !== 'png') {
         return output.exportAs(kind);
     }
     if (kind === 'mathml') {
         return output.setFormat('mathml').setWrapper('html').getCode();
+    }
+    if (kind === 'png' && typeof output.setDpi === 'function') {
+        const scale = typeof output.getScale === 'function' ? output.getScale() : 1;
+        const url = output.setFormat('png').setDpi(Math.round(PNG_DPI * scale)).getEquationURL();
+        output.setFormat('svg');
+        return url;
     }
     return output.setFormat('svg').getEquationURL();
 }
@@ -898,7 +910,7 @@ let LATEX_HEIGHT = 90;
 let LATEX_MIN = 40;
 
 // The equation's size against a normal one (Output.setScale()), in %: a slider just before Insert as,
-// as the Google sidebar has, with the size on its right. It shows while Insert as is an image (SVG or
+// with the size on its right and what it is in its tooltip. It shows while Insert as is an image (SVG or
 // PNG), which the scale sizes in em (Output.imageSize()), and for MathML too where the design asks for
 // it (design.sizeControl); never for LaTeX, which has no size of its own. The size is remembered as
 // prefs.size, and an equation being edited starts at its own size.
@@ -913,8 +925,8 @@ const addSizeSlider = (insertAs, prefs, save, forMathML) => {
     const label = document.createElement('label');
     label.className = 'cc-eqn-size';
     label.title = str.size_title;
-    label.innerHTML = `<span>${escapeHtml(str.size)}</span>` +
-        `<input type="range" min="${SIZE_MIN}" max="${SIZE_MAX}" step="${SIZE_STEP}"><output></output>`;
+    label.innerHTML = `<input type="range" min="${SIZE_MIN}" max="${SIZE_MAX}" step="${SIZE_STEP}"` +
+        ` aria-label="${escapeHtml(str.size)}"><output></output>`;
     insertAs.parentNode.insertBefore(label, insertAs);
     const range = label.querySelector('input');
     const shown = label.querySelector('output');
@@ -957,15 +969,28 @@ const sizeSliderIn = (root) => {
     return (label && label.ccSize) || null;
 };
 // The scale an image on the page was inserted at, against its natural size: from its width - a style
-// in em (the image server's 16px to the em) or px, or a width attribute - so it must have loaded.
-// 0 if unknown.
+// in em (the image server's 16px to the em) or px, or a width attribute - so it must have loaded. A
+// PNG's natural size is its \dpi's (the server's 300 without one) against the SVG's 96. 0 if unknown.
 const imageScaleOf = (img) => {
     if (!img || !img.nodeName || img.nodeName.toLowerCase() !== 'img' || !img.naturalWidth) {
         return 0;
     }
     const width = /^([\d.]+)(px|em)$/.exec(img.style.width || '')
         || /^([\d.]+)()$/.exec(img.getAttribute('width') || '');
-    return width ? parseFloat(width[1]) * (width[2] === 'em' ? 16 : 1) / img.naturalWidth : 0;
+    if (!width) {
+        return 0;
+    }
+    let src = img.getAttribute('src') || '';
+    let dpi = 96;
+    if (/png\.image\?/.test(src)) {
+        try {
+            src = decodeURIComponent(src);
+        } catch (e) {
+            // Not valid percent-encoding: read as it stands.
+        }
+        dpi = Number((/\\dpi\{(\d+)\}/.exec(src) || [0, 300])[1]);
+    }
+    return parseFloat(width[1]) * (width[2] === 'em' ? 16 : 1) * dpi / 96 / img.naturalWidth;
 };
 
 /**
@@ -1355,7 +1380,7 @@ function injectPredictorStylesOnce() {
         '.cc-eqn-size { display: inline-flex !important; align-items: center !important; gap: 6px !important; ' +
             'margin: 0 !important; padding: 0 !important; font: inherit !important; color: #54647c !important; ' +
             'cursor: pointer !important; white-space: nowrap !important; user-select: none !important; }' +
-        '.cc-eqn-size span, .cc-eqn-size output { font: inherit !important; color: inherit !important; }' +
+        '.cc-eqn-size output { font: inherit !important; color: inherit !important; }' +
         '.cc-eqn-size input { width: 96px !important; min-width: 48px !important; flex: 0 1 96px !important; ' +
             'height: auto !important; margin: 0 !important; padding: 0 !important; border: 0 !important; ' +
             'background: none !important; accent-color: var(--cc-accent, #003794) !important; cursor: pointer !important; }' +
@@ -1696,6 +1721,7 @@ const setupEditor = (editor) => {
                     <select class="cc-eqn-select" id="${ids.insertMode}" title="${escapeHtml(str.insertas_menu)}">
                         ${option('mathml', str.insert_mathml)}
                         ${option('svg', str.insert_svg)}
+                        ${option('png', str.insert_png)}
                         ${option('latex', str.insert_latex)}
                     </select>
                     <button type="button" class="cc-eqn-btn cc-cancel">${escapeHtml(str.cancel)}</button>
@@ -1763,7 +1789,7 @@ const setupEditor = (editor) => {
         if (mode === 'latex') {
             return escapeHtml(texOf(latex, document.getElementById(ids.toggleInline).checked));
         }
-        if (mode === 'svg') {
+        if (isImageFormat(mode)) {
             // The referrerpolicy is explicit: the rendering service identifies the calling site by
             // referer, and a stricter page policy would otherwise send none.
             const size = sizeImage(eqOutput, (mark, got) => {
@@ -1776,7 +1802,7 @@ const setupEditor = (editor) => {
                 }
                 editor.dom.setAttrib(img, 'data-cc-size', null);
             });
-            const src = escapeHtml(outputCode(eqOutput, 'url'));
+            const src = escapeHtml(outputCode(eqOutput, mode === 'png' ? 'png' : 'url'));
             return `<img class="fxtex" src="${src}" alt="${escapeHtml(latex)}" referrerpolicy="origin"${size}>`;
         }
         return bareMath(outputCode(eqOutput, 'mathml'));
@@ -1961,7 +1987,7 @@ const setupEditor = (editor) => {
             const match = target.src.match(/(gif|svg|png)\.image\?(.*)/);
             if (match) {
                 const eq = splitInline(decodeEquation(match[2]));
-                showDialog(eq.latex, target, 'svg', eq.inline);
+                showDialog(eq.latex, target, match[1] === 'png' ? 'png' : 'svg', eq.inline);
             }
             return;
         }
